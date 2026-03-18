@@ -8,7 +8,7 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 def create_profile(profile: ProfileCreate):
     return {
         "message": "profile saved",
-        "data": profile.dict()
+        "data": profile.model_dump()
     }
 
 

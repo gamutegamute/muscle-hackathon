@@ -8,7 +8,7 @@ router = APIRouter(prefix="/records", tags=["records"])
 def create_record(record: RecordCreate):
     return {
         "message": "record saved",
-        "data": record.dict()
+        "data": record.model_dump()
     }
 
 
