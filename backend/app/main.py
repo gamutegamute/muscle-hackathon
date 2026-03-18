@@ -52,3 +52,9 @@ def get_records():
 def create_record(record: WorkoutRecord):
     records.append(record)
     return {"message": "Record created", "data": record}
+
+@app.post("/ai/advice")
+def ai_advice():
+    return {
+        "message": "今日も記録お疲れさま！その調子！"
+    }
