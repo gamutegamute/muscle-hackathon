@@ -1,15 +1,13 @@
 from fastapi import APIRouter
 from app.schemas.record import RecordCreate
 from datetime import datetime
-import uuid
 from app.firebase import db
 
 router = APIRouter(prefix="/records", tags=["records"])
 
 
-# --- DB操作 ---
 def save_record(data: dict):
-    db.collection("records").document(data["recordId"]).set(data)
+    db.collection("records").add(data)
 
 
 def get_user_records(user_id: str):
@@ -17,13 +15,11 @@ def get_user_records(user_id: str):
     return [doc.to_dict() for doc in docs]
 
 
-# --- API ---
 @router.post("")
 def create_record(record: RecordCreate):
     data = record.model_dump()
 
     record_data = {
-        "recordId": str(uuid.uuid4()),
         "userId": data["userId"],
         "menuName": data["menuName"],
         "count": data["count"],
@@ -37,6 +33,15 @@ def create_record(record: RecordCreate):
     return {
         "message": "record saved",
         "data": record_data
+    }
+
+
+@router.get("/{user_id}")
+def get_records(user_id: str):
+    records = get_user_records(user_id)
+
+    return {
+        "records": records
     }
 
 
