@@ -4,16 +4,14 @@ from datetime import datetime
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
-# 仮DB（Firestoreの代わり）
-fake_users_db = {}
-
+from app.firebase import db
 
 def save_user(user_id: str, data: dict):
-    fake_users_db[user_id] = data
-
+    db.collection("users").document(user_id).set(data)
 
 def get_user(user_id: str):
-    return fake_users_db.get(user_id)
+    doc = db.collection("users").document(user_id).get()
+    return doc.to_dict() if doc.exists else None
 
 
 @router.post("")

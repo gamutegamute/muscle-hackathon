@@ -5,17 +5,14 @@ import uuid
 
 router = APIRouter(prefix="/records", tags=["records"])
 
-# 仮DB
-fake_records_db = []
+from app.firebase import db
 
-
-# --- DB操作（あとでFirestoreに差し替える） ---
 def save_record(data: dict):
-    fake_records_db.append(data)
-
+    db.collection("records").add(data)
 
 def get_user_records(user_id: str):
-    return [r for r in fake_records_db if r["userId"] == user_id]
+    docs = db.collection("records").where("userId", "==", user_id).stream()
+    return [doc.to_dict() for doc in docs]
 
 
 # --- API ---
