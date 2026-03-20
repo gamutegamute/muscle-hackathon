@@ -1,45 +1,105 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 
-// Figmaデザインから抽出した色（記録画面と共通）
 const COLORS = {
-  primaryGreen: '#A4C639', // 保存ボタン
-  background: '#F5F5F5', // 画面全体の背景
+  primaryGreen: '#A4C639',
+  background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
-  grayBackground: '#E0E0E0', // 入力フィールドの背景
-  grayText: '#757575', // プレースホルダー、未選択テキスト
-  divider: '#C7C7CC', // 区切り線（薄いグレー）
+  grayBackground: '#E0E0E0',
+  grayText: '#757575',
+  divider: '#C7C7CC',
 };
 
+const API_BASE_URL = 'http://localhost:8000';
+// 実機で試すときは localhost ではなく、自分のPCのIPアドレスに変える
+// 例: const API_BASE_URL = 'http://192.168.1.10:8000';
+
 export default function ProfileSettingsScreen() {
+  const router = useRouter();
+
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert('入力エラー', '名前を入力してください');
+      return;
+    }
+
+    const payload = {
+      userId: 'test-user-001',
+      name: name.trim(),
+      age: age ? Number(age) : 0,
+      height: height ? Number(height) : 0,
+      weight: weight ? Number(weight) : 0,
+      bodyFat: bodyFat ? Number(bodyFat) : 0,
+    };
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_BASE_URL}/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log('profile save error:', data);
+        Alert.alert('保存失敗', data?.detail || 'プロフィールの保存に失敗しました');
+        return;
+      }
+
+      console.log('profile save success:', data);
+      Alert.alert('保存成功', 'プロフィールを保存しました');
+
+      // 記録画面へ遷移
+      router.push('/kiroku');
+      // もしファイル構成が app/(tabs)/record.tsx などなら
+      // router.push('/(tabs)/record');
+    } catch (error) {
+      console.log('network error:', error);
+      Alert.alert('通信エラー', 'サーバーに接続できませんでした');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ★ポイント1：タイトルをScrollViewの中に移動しました。
-        これにより、タイトルも一緒にスクロールするようになります。
-      */}
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        {/* --- ヘッダー（タイトル） --- */}
+      >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>プロフィール設定</Text>
         </View>
 
-        {/* --- 入力フォーム --- */}
         <View style={styles.formContainer}>
-          {/* 名前 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>名前</Text>
-            {/* ★ポイント2：ラベルと入力の間に薄いグレーの線を入れました */}
-            <View style={styles.divider} /> 
+            <View style={styles.divider} />
             <TextInput
               style={styles.input}
               placeholder="名前"
@@ -49,7 +109,6 @@ export default function ProfileSettingsScreen() {
             />
           </View>
 
-          {/* 年齢 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>年齢</Text>
             <View style={styles.divider} />
@@ -63,7 +122,6 @@ export default function ProfileSettingsScreen() {
             />
           </View>
 
-          {/* 身長 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>身長</Text>
             <View style={styles.divider} />
@@ -77,7 +135,6 @@ export default function ProfileSettingsScreen() {
             />
           </View>
 
-          {/* 体重 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>体重</Text>
             <View style={styles.divider} />
@@ -91,7 +148,6 @@ export default function ProfileSettingsScreen() {
             />
           </View>
 
-          {/* 体脂肪率 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>体脂肪率</Text>
             <View style={styles.divider} />
@@ -106,9 +162,14 @@ export default function ProfileSettingsScreen() {
           </View>
         </View>
 
-        {/* --- 保存ボタン --- */}
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>保存して始める</Text>
+        <TouchableOpacity
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          <Text style={styles.saveButtonText}>
+            {loading ? '保存中...' : '保存して始める'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -124,9 +185,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  // ヘッダー（ScrollView内に配置したため、上の余白を調整）
   header: {
-    paddingTop: 40, 
+    paddingTop: 40,
     paddingBottom: 30,
     alignItems: 'center',
   },
@@ -135,7 +195,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
   },
-  // 入力フォーム
   formContainer: {
     gap: 10,
     marginBottom: 40,
@@ -143,39 +202,40 @@ const styles = StyleSheet.create({
   inputGroup: {
     backgroundColor: COLORS.grayBackground,
     borderRadius: 15,
-    paddingHorizontal: 20, // 左右のパディングを少し広く
-    paddingVertical: 15, // 上下のパディングも調整
-    marginBottom: 10, // 各項目間の余白
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 10,
   },
   inputLabel: {
     fontSize: 16,
     color: COLORS.text,
     fontWeight: '500',
-    marginBottom: 5, // 線との余白
+    marginBottom: 5,
   },
-  // ★ポイント3：区切り線のスタイル
   divider: {
     height: 1,
     backgroundColor: COLORS.divider,
-    marginBottom: 10, // 入力フィールドとの余白
+    marginBottom: 10,
   },
   input: {
     fontSize: 16,
     color: COLORS.text,
-    paddingVertical: 5, // TextInputの上下パディング
+    paddingVertical: 5,
   },
-  // 保存ボタン（角丸を少し大きくしてデザインに合わせました）
   saveButton: {
     backgroundColor: COLORS.primaryGreen,
     paddingVertical: 18,
-    borderRadius: 30, 
+    borderRadius: 30,
     alignItems: 'center',
-    elevation: 2, // Androidの影
-    shadowColor: '#000', // iOSの影
+    elevation: 2,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     marginTop: 30,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     color: COLORS.white,
