@@ -1,18 +1,19 @@
+import { useRouter } from 'expo-router'; // ★追加1：移動用のフックをインポート
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-// Figmaデザインから抽出した色（記録画面と共通）
 const COLORS = {
-  primaryGreen: '#A4C639', // 保存ボタン
-  background: '#F5F5F5', // 画面全体の背景
+  primaryGreen: '#A4C639',
+  background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
-  grayBackground: '#E0E0E0', // 入力フィールドの背景
-  grayText: '#757575', // プレースホルダー、未選択テキスト
-  divider: '#C7C7CC', // 区切り線（薄いグレー）
+  grayBackground: '#E0E0E0',
+  grayText: '#757575',
+  divider: '#C7C7CC',
 };
 
 export default function ProfileSettingsScreen() {
+  const router = useRouter(); // ★追加2：リモコンの準備
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [height, setHeight] = useState('');
@@ -21,13 +22,12 @@ export default function ProfileSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ★ポイント1：タイトルをScrollViewの中に移動しました。
-        これにより、タイトルも一緒にスクロールするようになります。
-      */}
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        contentInsetAdjustmentBehavior="never"
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="never" // ★修正：プロパティをタグの中に正しく配置
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+      >
         {/* --- ヘッダー（タイトル） --- */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>プロフィール設定</Text>
@@ -38,7 +38,6 @@ export default function ProfileSettingsScreen() {
           {/* 名前 */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>名前</Text>
-            {/* ★ポイント2：ラベルと入力の間に薄いグレーの線を入れました */}
             <View style={styles.divider} /> 
             <TextInput
               style={styles.input}
@@ -107,7 +106,10 @@ export default function ProfileSettingsScreen() {
         </View>
 
         {/* --- 保存ボタン --- */}
-        <TouchableOpacity style={styles.saveButton}>
+        <TouchableOpacity 
+          style={styles.saveButton} 
+          onPress={() => router.replace('/(tabs)/home')} // ★追加3：ボタンを押したらホームへ！
+        >
           <Text style={styles.saveButtonText}>保存して始める</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -124,7 +126,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  // ヘッダー（ScrollView内に配置したため、上の余白を調整）
   header: {
     paddingTop: 40, 
     paddingBottom: 30,
@@ -135,7 +136,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
   },
-  // 入力フォーム
   formContainer: {
     gap: 10,
     marginBottom: 40,
@@ -143,35 +143,33 @@ const styles = StyleSheet.create({
   inputGroup: {
     backgroundColor: COLORS.grayBackground,
     borderRadius: 15,
-    paddingHorizontal: 20, // 左右のパディングを少し広く
-    paddingVertical: 15, // 上下のパディングも調整
-    marginBottom: 10, // 各項目間の余白
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 10,
   },
   inputLabel: {
     fontSize: 16,
     color: COLORS.text,
     fontWeight: '500',
-    marginBottom: 5, // 線との余白
+    marginBottom: 5,
   },
-  // ★ポイント3：区切り線のスタイル
   divider: {
     height: 1,
     backgroundColor: COLORS.divider,
-    marginBottom: 10, // 入力フィールドとの余白
+    marginBottom: 10,
   },
   input: {
     fontSize: 16,
     color: COLORS.text,
-    paddingVertical: 5, // TextInputの上下パディング
+    paddingVertical: 5,
   },
-  // 保存ボタン（角丸を少し大きくしてデザインに合わせました）
   saveButton: {
     backgroundColor: COLORS.primaryGreen,
     paddingVertical: 18,
     borderRadius: 30, 
     alignItems: 'center',
-    elevation: 2, // Androidの影
-    shadowColor: '#000', // iOSの影
+    elevation: 2,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,

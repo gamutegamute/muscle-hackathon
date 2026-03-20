@@ -14,9 +14,19 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      {/* ★ screenOptions={{ headerShown: false }} を追加しました。
+        これで index や profile の上部に出ていた文字がすべて消えます！
+      */}
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* タブバーのあるメイン画面群 */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        
+        {/* モーダル画面が必要な場合の設定（一応残してあります） */}
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        
+        {/* 個別で設定を書かなくても、上の screenOptions ですべて非表示になりますが、
+          明示的に管理したい場合はここに行を追加していきます。
+        */}
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
