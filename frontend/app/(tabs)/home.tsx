@@ -1,7 +1,9 @@
-import { useRouter } from 'expo-router'; // ★追加：画面移動用のリモコン
-import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native'; // ★追加：画面に戻った時に更新する鍵
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
+import { workoutData } from '../globalState'; // ★追加：共通データ置き場
 
 // カレンダーの日本語化設定
 LocaleConfig.locales['jp'] = {
@@ -24,15 +26,21 @@ const COLORS = {
 };
 
 export default function HomeScreen() {
-  const router = useRouter(); // ★追加：移動用リモコンの準備
+  const router = useRouter();
 
-  const [streakDays, setStreakDays] = useState(3);
-  const [totalMinutes, setTotalMinutes] = useState(120);
-  const [markedDates, setMarkedDates] = useState({
-    '2026-03-18': { selected: true, selectedColor: COLORS.primaryGreen },
-    '2026-03-19': { selected: true, selectedColor: COLORS.primaryGreen },
-    '2026-03-20': { selected: true, selectedColor: COLORS.primaryGreen },
-  });
+  // ★Stateを共通データ（workoutData）の初期値で設定
+  const [streakDays, setStreakDays] = useState(workoutData.streakDays);
+  const [totalMinutes, setTotalMinutes] = useState(workoutData.totalMinutes);
+  const [markedDates, setMarkedDates] = useState(workoutData.markedDates);
+
+  // ★重要：記録画面から戻ってきた瞬間にデータを最新にする処理
+  useFocusEffect(
+    useCallback(() => {
+      setStreakDays(workoutData.streakDays);
+      setTotalMinutes(workoutData.totalMinutes);
+      setMarkedDates({ ...workoutData.markedDates }); // 確実に再描画させるためにコピー
+    }, [])
+  );
 
   const getRankBadge = (streak: number, time: number) => {
     if (streak >= 7 && time >= 300) return '🔥 鉄の意志を持つ者';
@@ -41,7 +49,6 @@ export default function HomeScreen() {
     return '🥚 はじまりの一歩';
   };
 
-  // ★変更：褒める＋「一緒に考えましょう」のメッセージに進化！
   const getAiMessage = (streak: number) => {
     let praise = '';
     if (streak >= 7) praise = '素晴らしい継続力です！筋肉が喜んでいますよ！\n';
@@ -56,18 +63,20 @@ export default function HomeScreen() {
   const currentMessage = getAiMessage(streakDays);
 
   return (
-    <SafeAreaView style={styles.container}>
+    // ★ノッチ部分の色を白に固定して「気持ち悪い隙間」を解消
+    <SafeAreaView style={[styles.container, { backgroundColor: COLORS.white }]}>
       <ScrollView 
+        style={{ backgroundColor: COLORS.background }} 
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="never" 
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.pageTitle}>ホーム</Text>
 
-        {/* --- ★変更：AIカード全体を「押せるボタン（TouchableOpacity）」にしました --- */}
+        {/* AIトレーナー相談カード */}
         <TouchableOpacity 
           style={styles.aiCard} 
-          onPress={() => router.push('/ai')} // ★追加：押したらai.tsxに飛ぶ！
+          onPress={() => router.push('/ai')} 
           activeOpacity={0.7}
         >
           <View style={styles.aiHeader}>
@@ -79,7 +88,7 @@ export default function HomeScreen() {
           <Text style={styles.aiMessage}>{currentMessage}</Text>
         </TouchableOpacity>
 
-        {/* --- 上段：記録サマリー --- */}
+        {/* 記録サマリー */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>累計時間</Text>
@@ -91,7 +100,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* --- 中段：カレンダー --- */}
+        {/* カレンダー */}
         <View style={styles.calendarContainer}>
           <Calendar
             markedDates={markedDates}
@@ -102,23 +111,19 @@ export default function HomeScreen() {
             }}
           />
         </View>
-        
-        {/* ※下段のメニュー部分は削除しました！スッキリ！ */}
 
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// --- スタイル（不要になったメニューのスタイルは削除してあります） ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 20, 
     paddingBottom: 40,
   },
   pageTitle: {
@@ -134,7 +139,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#C8E6C9',
-    // 押せる感を出すために少し影を強調
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,

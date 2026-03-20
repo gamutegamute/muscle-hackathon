@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+// ★ 共通データ置き場を読み込む
+import { workoutData } from '../globalState';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -27,12 +29,69 @@ const NUMBER_DATA = Array.from({ length: 101 }, (_, i) => i);
 const SET_DATA = Array.from({ length: 21 }, (_, i) => i);
 const SEC_DATA = Array.from({ length: 60 }, (_, i) => i);
 
+// ★ ピッカーコンポーネント（メモ化して動作を軽くし、フリーズを防止）
+const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef }: any) => {
+  const [pickerWidth, setPickerWidth] = useState(0);
+  const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
+
+  return (
+    <View 
+      style={styles.pickerWrapper} 
+      onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}
+    >
+      <View style={styles.centerIndicator} pointerEvents="none" />
+      {pickerWidth > 0 && (
+        <FlatList
+          ref={pickerRef}
+          data={data}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.toString()}
+          snapToInterval={ITEM_WIDTH}
+          snapToOffsets={data.map((_: any, i: number) => i * ITEM_WIDTH)} 
+          snapToAlignment="start" 
+          decelerationRate="normal" 
+          initialScrollIndex={currentVal}
+          getItemLayout={(_, index) => (
+            { length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index }
+          )}
+          onMomentumScrollEnd={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            const index = Math.round(x / ITEM_WIDTH);
+            if (index >= 0 && index < data.length) onSelect(data[index]);
+          }}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingHorizontal: sidePadding }}
+          renderItem={({ item }) => (
+            <View style={styles.numberItem}>
+              <Text style={[
+                styles.numberText, 
+                currentVal === item && styles.activeNumberText
+              ]}>
+                {item}
+              </Text>
+            </View>
+          )}
+        />
+      )}
+    </View>
+  );
+});
+
 export default function DetailedRecordScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // ★ 追加：最後に処理したパラメータを記録する（二重上書き防止）
+  const lastParamsRef = useRef("");
+
+  // 4つのピッカー用リモコン
+  const countRef = useRef<FlatList>(null);
+  const setsRef = useRef<FlatList>(null);
+  const minsRef = useRef<FlatList>(null);
+  const secsRef = useRef<FlatList>(null);
 
   const [activeTab, setActiveTab] = useState('input');
-  
-  // ★ 復活：日付と時間のState
   const [dateStr, setDateStr] = useState('2026/03/20');
   const [timeStr, setTimeStr] = useState('17:15');
 
@@ -43,98 +102,64 @@ export default function DetailedRecordScreen() {
   const [secs, setSecs] = useState(30);
   const [memo, setMemo] = useState('');
 
-  // ★ 復活：現在時刻を取得してセットする関数
+  // AIからのデータ反映ロジック
+  useEffect(() => {
+    const paramsKey = JSON.stringify(params);
+    if (paramsKey === lastParamsRef.current || !params.menu) return;
+    lastParamsRef.current = paramsKey; 
+
+    setMenu(params.menu as string);
+
+    const scrollLists = () => {
+      if (params.count) {
+        const val = Number(params.count);
+        setCount(val);
+        setTimeout(() => countRef.current?.scrollToIndex({ index: val, animated: true }), 300);
+      }
+      if (params.sets) {
+        const val = Number(params.sets);
+        setSets(val);
+        setTimeout(() => setsRef.current?.scrollToIndex({ index: val, animated: true }), 300);
+      }
+      if (params.mins) {
+        const val = Number(params.mins);
+        setMins(val);
+        setTimeout(() => minsRef.current?.scrollToIndex({ index: val, animated: true }), 300);
+      }
+      if (params.secs) {
+        const val = Number(params.secs);
+        setSecs(val);
+        setTimeout(() => secsRef.current?.scrollToIndex({ index: val, animated: true }), 300);
+      }
+    };
+
+    scrollLists();
+    handleSetCurrentTime();
+  }, [params]);
+
   const handleSetCurrentTime = () => {
     const now = new Date();
     setDateStr(`${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`);
     setTimeStr(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
   };
 
-  // ★ ここだけ変更！：メニューが空の時にAIへ誘導するアラート
   const handleSave = () => {
     if (!menu.trim()) {
-      Alert.alert(
-        'メニューが未入力です',
-        '今日のトレーニングは決まっていますか？\n迷っているならAIに相談してみましょう！',
+      Alert.alert('メニューが未入力です','AIに相談してみますか？',
         [
-          {
-            text: '自分で入力する',
-            style: 'cancel',
-          },
-          {
-            text: 'AIに相談する 🤖',
-            // AIタブへバビューンと移動！
-            onPress: () => router.push('/(tabs)/ai'),
-          },
+          { text: '自分で入力', style: 'cancel' },
+          { text: '相談する 🤖', onPress: () => router.push('/(tabs)/ai') },
         ]
       );
       return;
     }
-    
-    // 日付と時間も一緒に保存データとして送れるようになりました
-    console.log('保存データ:', { dateStr, timeStr, menu, count, sets, mins, secs, memo });
 
+    // ★ 共通データへの書き込み処理（ホーム画面の累計時間とカレンダーが更新されます）
+    const totalMins = mins + (secs > 0 ? 1 : 0); // 秒があれば1分繰り上げ
+    workoutData.addWorkout(totalMins, dateStr);
+
+    console.log('保存完了:', { menu, count, sets, mins, secs });
     router.push('/record_complete');
-  };
-
-  const renderPicker = (data: number[], currentVal: number, onSelect: (val: number) => void, initialIndex: number) => {
-    const [pickerWidth, setPickerWidth] = useState(0);
-    const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
-
-    return (
-      <View 
-        style={styles.pickerWrapper} 
-        onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}
-      >
-        <View style={styles.centerIndicator} pointerEvents="none" />
-        
-        {pickerWidth > 0 && (
-          <FlatList
-            data={data}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.toString()}
-            
-            snapToInterval={ITEM_WIDTH}
-            snapToOffsets={data.map((_, i) => i * ITEM_WIDTH)} 
-            snapToAlignment="start" 
-            decelerationRate="normal" 
-
-            initialScrollIndex={initialIndex}
-            getItemLayout={(_, index) => (
-              { length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index }
-            )}
-            
-            onMomentumScrollEnd={(e) => {
-              const x = e.nativeEvent.contentOffset.x;
-              const index = Math.round(x / ITEM_WIDTH);
-              if (index >= 0 && index < data.length) {
-                onSelect(data[index]);
-              }
-            }}
-            onScroll={(e) => {
-              const x = e.nativeEvent.contentOffset.x;
-              const index = Math.round(x / ITEM_WIDTH);
-              if (index >= 0 && index < data.length) {
-                onSelect(data[index]);
-              }
-            }}
-            scrollEventThrottle={16}
-            contentContainerStyle={{ paddingHorizontal: sidePadding }}
-            renderItem={({ item }) => (
-              <View style={styles.numberItem}>
-                <Text style={[
-                  styles.numberText, 
-                  currentVal === item && styles.activeNumberText
-                ]}>
-                  {item}
-                </Text>
-              </View>
-            )}
-          />
-        )}
-      </View>
-    );
   };
 
   return (
@@ -147,7 +172,6 @@ export default function DetailedRecordScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
         <View style={styles.tabContainer}>
           {['input', 'stopwatch', 'timer'].map((t) => (
             <TouchableOpacity 
@@ -162,21 +186,12 @@ export default function DetailedRecordScreen() {
           ))}
         </View>
 
-        {/* ★ 修正：テキストをTextInputに変更し、手入力＆現在時刻ボタンに対応 */}
         <View style={styles.dateTimeRow}>
           <View style={styles.dateBadge}>
-            <TextInput 
-              style={styles.dateText} 
-              value={dateStr} 
-              onChangeText={setDateStr} 
-            />
+            <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} />
           </View>
           <View style={styles.dateBadge}>
-            <TextInput 
-              style={styles.dateText} 
-              value={timeStr} 
-              onChangeText={setTimeStr} 
-            />
+            <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} />
           </View>
           <TouchableOpacity style={styles.currentBtn} onPress={handleSetCurrentTime}>
             <Text style={styles.currentBtnText}>現在時刻</Text>
@@ -194,20 +209,24 @@ export default function DetailedRecordScreen() {
         <View style={styles.row}>
           <View style={styles.half}>
             <Text style={styles.label}>回数: <Text style={styles.highlight}>{count}</Text></Text>
-            {renderPicker(NUMBER_DATA, count, setCount, 10)}
+            <WorkoutPicker data={NUMBER_DATA} currentVal={count} onSelect={setCount} pickerRef={countRef} />
           </View>
           <View style={styles.half}>
             <Text style={styles.label}>セット: <Text style={styles.highlight}>{sets}</Text></Text>
-            {renderPicker(SET_DATA, sets, setSets, 3)}
+            <WorkoutPicker data={SET_DATA} currentVal={sets} onSelect={setSets} pickerRef={setsRef} />
           </View>
         </View>
 
         <View style={styles.timeSection}>
           <Text style={styles.label}>時間: <Text style={styles.highlight}>{mins}分 {secs}秒</Text></Text>
           <View style={styles.timePickers}>
-            <View style={{flex:1}}>{renderPicker(NUMBER_DATA, mins, setMins, 0)}</View>
+            <View style={{flex:1}}>
+              <WorkoutPicker data={NUMBER_DATA} currentVal={mins} onSelect={setMins} pickerRef={minsRef} />
+            </View>
             <Text style={styles.timeSeparator}>:</Text>
-            <View style={{flex:1}}>{renderPicker(SEC_DATA, secs, setSecs, 30)}</View>
+            <View style={{flex:1}}>
+              <WorkoutPicker data={SEC_DATA} currentVal={secs} onSelect={setSecs} pickerRef={secsRef} />
+            </View>
           </View>
         </View>
 
@@ -238,7 +257,6 @@ const styles = StyleSheet.create({
   activeTabText: { color: COLORS.text, fontWeight: 'bold' },
   dateTimeRow: { flexDirection: 'row', gap: 8, marginBottom: 15, alignItems: 'center' },
   dateBadge: { backgroundColor: COLORS.white, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.grayBackground },
-  // ★ 修正：TextInput用にpaddingをリセット（Androidで文字が見切れるのを防ぐため）
   dateText: { fontSize: 14, color: COLORS.text, padding: 0 }, 
   currentBtn: { backgroundColor: COLORS.primaryGreen, padding: 10, borderRadius: 12 },
   currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
@@ -247,46 +265,11 @@ const styles = StyleSheet.create({
   half: { flex: 1 },
   label: { fontSize: 14, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
   highlight: { color: COLORS.primaryGreen, fontSize: 18, fontWeight: 'bold' },
-  
-  pickerWrapper: { 
-    height: 60, 
-    backgroundColor: COLORS.white, 
-    borderRadius: 15, 
-    justifyContent: 'center', 
-    overflow: 'hidden',
-    position: 'relative'
-  },
-  centerIndicator: { 
-    position: 'absolute', 
-    left: '50%', 
-    marginLeft: -ITEM_WIDTH/2, 
-    width: ITEM_WIDTH, 
-    height: 45, 
-    borderRadius: 10, 
-    backgroundColor: '#A4C63915', 
-    borderWidth: 2, 
-    borderColor: COLORS.primaryGreen, 
-    zIndex: 10 
-  },
-  
-  numberItem: { 
-    width: ITEM_WIDTH, 
-    height: '100%',
-    alignItems: 'center', 
-    justifyContent: 'center' 
-  },
-  numberText: { 
-    fontSize: 16, 
-    color: COLORS.grayText,
-    textAlign: 'center', 
-    width: '100%',
-  },
-  activeNumberText: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    color: COLORS.primaryGreen 
-  },
-  
+  pickerWrapper: { height: 60, backgroundColor: COLORS.white, borderRadius: 15, justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH/2, width: ITEM_WIDTH, height: 45, borderRadius: 10, backgroundColor: '#A4C63915', borderWidth: 2, borderColor: COLORS.primaryGreen, zIndex: 10 },
+  numberItem: { width: ITEM_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  numberText: { fontSize: 16, color: COLORS.grayText, textAlign: 'center', width: '100%' },
+  activeNumberText: { fontSize: 22, fontWeight: 'bold', color: COLORS.primaryGreen },
   timeSection: { marginBottom: 20 },
   timePickers: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeSeparator: { fontSize: 20, fontWeight: 'bold', color: COLORS.grayText },
