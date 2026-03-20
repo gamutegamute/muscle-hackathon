@@ -8,6 +8,9 @@ export const workoutData = {
   unlockedAchievements: [] as string[],
   latestAchievementId: null as string | null, 
 
+  // ★ 現在装備中の称号（デフォルト）
+  equippedBadge: '🥚 はじまりの一歩', 
+
   ACHIEVEMENTS: [
     { id: 'streak_3', name: '⚡ 三日坊主の破壊者', icon: 'zap', condition: (d: any) => d.streakDays >= 3, isRare: false },
     { id: 'streak_7', name: '🛡️ 鋼のルーティン', icon: 'shield', condition: (d: any) => d.streakDays >= 7, isRare: true },
@@ -17,8 +20,6 @@ export const workoutData = {
     { id: 'time_500', name: '🧠 筋肉の賢者', icon: 'brain', condition: (d: any) => d.totalMinutes >= 500, isRare: true },
     { id: 'ai_1', name: '🤖 AIの弟子', icon: 'robot', condition: (d: any) => d.aiConsultationCount >= 1, isRare: false },
     { id: 'ai_5', name: '🧠 理論派トレーニー', icon: 'book', condition: (d: any) => d.aiConsultationCount >= 5, isRare: true },
-    { id: 'early_bird', name: '☀️ 暁のパンプアップ', icon: 'sun', condition: null, isRare: false }, 
-    { id: 'night_owl', name: '🌙 真夜中の鉄使い', icon: 'moon', condition: null, isRare: false },
   ],
 
   checkAchievements: () => {
@@ -29,7 +30,6 @@ export const workoutData = {
     });
   },
 
-  // ★ AI画面でこれを呼んでいるので必須です
   incrementAiCount: () => {
     workoutData.aiConsultationCount += 1;
     workoutData.checkAchievements();
@@ -43,11 +43,6 @@ export const workoutData = {
       workoutData.streakDays += 1;
     }
     workoutData.markedDates[formattedDate] = { selected: true, selectedColor: '#A4C639' };
-
-    const currentHour = new Date().getHours();
-    if (currentHour >= 4 && currentHour <= 7) workoutData.unlock('early_bird');
-    else if (currentHour >= 23 || currentHour <= 3) workoutData.unlock('night_owl');
-
     workoutData.checkAchievements();
   },
 
@@ -55,17 +50,12 @@ export const workoutData = {
     if (!workoutData.unlockedAchievements.includes(id)) {
       workoutData.unlockedAchievements.push(id);
       workoutData.latestAchievementId = id; 
+      // ★ ここにあった「equippedBadge = ach.name」を削除しました。
+      // これで勝手に着替えることはありません。
     }
   },
 
   clearLatestAchievement: () => {
     workoutData.latestAchievementId = null;
-  },
-
-  getLatestAchievement: () => {
-    if (workoutData.unlockedAchievements.length === 0) return { name: '🥚 最初の一歩', icon: 'egg' };
-    const lastId = workoutData.unlockedAchievements[workoutData.unlockedAchievements.length - 1];
-    const ach = workoutData.ACHIEVEMENTS.find(a => a.id === lastId);
-    return ach ? { name: ach.name, icon: ach.icon } : { name: '🥚 最初の一歩', icon: 'egg' };
   }
 };
