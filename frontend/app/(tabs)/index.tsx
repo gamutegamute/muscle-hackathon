@@ -1,15 +1,24 @@
+import { useRouter } from 'expo-router'; //追加：移動用ツールインポート
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, TextInput } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const router = useRouter(); //追加：移動用リモコンの準備
+
+  const handleGuestLogin = () => {
+    router.replace('/profile') //ゲストログインなので戻るボタンは未実装
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled" // ★追加：キーボードのタップ判定を安定させる魔法
+        contentInsetAdjustmentBehavior="never"
+        showsVerticalScrollIndicator={false}
       >
         {/* --- ヘッダー・ロゴ --- */}
         <View style={styles.frameOne}>
@@ -78,7 +87,7 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleGuestLogin}>
             <Text style={styles.guestText}>登録せずに始める（ゲスト）</Text>
           </TouchableOpacity>
         </View>
