@@ -1,19 +1,19 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Alert,
+  FlatList,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
-  TouchableOpacity,
   TextInput,
-  ScrollView,
-  SafeAreaView,
-  Image,
-  Alert,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from '@expo/vector-icons';
 
 const COLORS = {
-  primaryGreen: '#8BC34A',
+  primaryGreen: '#A4C639',
   background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
@@ -21,332 +21,274 @@ const COLORS = {
   grayText: '#757575',
 };
 
-const API_BASE_URL = 'http://localhost:8000';
-// 実機なら localhost ではなくPCのIPに変える
-// 例: const API_BASE_URL = 'http://192.168.1.10:8000';
+const ITEM_WIDTH = 45; 
 
-export default function RecordInputScreen() {
+const NUMBER_DATA = Array.from({ length: 101 }, (_, i) => i);
+const SET_DATA = Array.from({ length: 21 }, (_, i) => i);
+const SEC_DATA = Array.from({ length: 60 }, (_, i) => i);
+
+export default function DetailedRecordScreen() {
+  const router = useRouter();
+
+  const [activeTab, setActiveTab] = useState('input');
+  
+  // ★ 復活：日付と時間のState
+  const [dateStr, setDateStr] = useState('2026/03/20');
+  const [timeStr, setTimeStr] = useState('17:15');
+
   const [menu, setMenu] = useState('');
-  const [count, setCount] = useState('');
-  const [time, setTime] = useState('');
+  const [count, setCount] = useState(10);
+  const [sets, setSets] = useState(3);
+  const [mins, setMins] = useState(0);
+  const [secs, setSecs] = useState(30);
   const [memo, setMemo] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const avatarUrl = 'https://via.placeholder.com/40';
-
-  const handleSave = async () => {
-    if (!menu.trim()) {
-      Alert.alert('入力エラー', 'メニューを入力してください');
-      return;
-    }
-
-    const payload = {
-      userId: 'test-user-001',
-      menuName: menu.trim(),
-      count: count ? Number(count) : 0,
-      duration: time ? Number(time) : 0,
-      memo: memo.trim(),
-    };
-
-    try {
-      setLoading(true);
-
-      const response = await fetch(`${API_BASE_URL}/records`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.log('record save error:', data);
-        Alert.alert('保存失敗', data?.detail || '記録の保存に失敗しました');
-        return;
-      }
-
-      console.log('record save success:', data);
-      Alert.alert('保存成功', '記録を保存しました');
-
-      setMenu('');
-      setCount('');
-      setTime('');
-      setMemo('');
-    } catch (error) {
-      console.log('network error:', error);
-      Alert.alert('通信エラー', 'サーバーに接続できませんでした');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ★ 復活：現在時刻を取得してセットする関数
   const handleSetCurrentTime = () => {
     const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    setTime(`${hours}${minutes}`);
+    setDateStr(`${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`);
+    setTimeStr(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
   };
 
-  const now = new Date();
-  const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
-  const timeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // ★ ここだけ変更！：メニューが空の時にAIへ誘導するアラート
+  const handleSave = () => {
+    if (!menu.trim()) {
+      Alert.alert(
+        'メニューが未入力です',
+        '今日のトレーニングは決まっていますか？\n迷っているならAIに相談してみましょう！',
+        [
+          {
+            text: '自分で入力する',
+            style: 'cancel',
+          },
+          {
+            text: 'AIに相談する 🤖',
+            // AIタブへバビューンと移動！
+            onPress: () => router.push('/(tabs)/ai'),
+          },
+        ]
+      );
+      return;
+    }
+    
+    // 日付と時間も一緒に保存データとして送れるようになりました
+    console.log('保存データ:', { dateStr, timeStr, menu, count, sets, mins, secs, memo });
+
+    router.push('/record_complete');
+  };
+
+  const renderPicker = (data: number[], currentVal: number, onSelect: (val: number) => void, initialIndex: number) => {
+    const [pickerWidth, setPickerWidth] = useState(0);
+    const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
+
+    return (
+      <View 
+        style={styles.pickerWrapper} 
+        onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}
+      >
+        <View style={styles.centerIndicator} pointerEvents="none" />
+        
+        {pickerWidth > 0 && (
+          <FlatList
+            data={data}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.toString()}
+            
+            snapToInterval={ITEM_WIDTH}
+            snapToOffsets={data.map((_, i) => i * ITEM_WIDTH)} 
+            snapToAlignment="start" 
+            decelerationRate="normal" 
+
+            initialScrollIndex={initialIndex}
+            getItemLayout={(_, index) => (
+              { length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index }
+            )}
+            
+            onMomentumScrollEnd={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              const index = Math.round(x / ITEM_WIDTH);
+              if (index >= 0 && index < data.length) {
+                onSelect(data[index]);
+              }
+            }}
+            onScroll={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              const index = Math.round(x / ITEM_WIDTH);
+              if (index >= 0 && index < data.length) {
+                onSelect(data[index]);
+              }
+            }}
+            scrollEventThrottle={16}
+            contentContainerStyle={{ paddingHorizontal: sidePadding }}
+            renderItem={({ item }) => (
+              <View style={styles.numberItem}>
+                <Text style={[
+                  styles.numberText, 
+                  currentVal === item && styles.activeNumberText
+                ]}>
+                  {item}
+                </Text>
+              </View>
+            )}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>記録の入力</Text>
-        <TouchableOpacity
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {loading ? '保存中...' : '保存'}
-          </Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>保存</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
         <View style={styles.tabContainer}>
-          <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-            <Text style={[styles.tabText, styles.activeTabText]}>入力</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tab}>
-            <Text style={styles.tabText}>ストップウォッチ</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tab}>
-            <Text style={styles.tabText}>タイマー</Text>
+          {['input', 'stopwatch', 'timer'].map((t) => (
+            <TouchableOpacity 
+              key={t} 
+              style={[styles.tab, activeTab === t && styles.activeTab]} 
+              onPress={() => setActiveTab(t)}
+            >
+              <Text style={[styles.tabText, activeTab === t && styles.activeTabText]}>
+                {t === 'input' ? '入力' : t === 'stopwatch' ? 'ストップウォッチ' : 'タイマー'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ★ 修正：テキストをTextInputに変更し、手入力＆現在時刻ボタンに対応 */}
+        <View style={styles.dateTimeRow}>
+          <View style={styles.dateBadge}>
+            <TextInput 
+              style={styles.dateText} 
+              value={dateStr} 
+              onChangeText={setDateStr} 
+            />
+          </View>
+          <View style={styles.dateBadge}>
+            <TextInput 
+              style={styles.dateText} 
+              value={timeStr} 
+              onChangeText={setTimeStr} 
+            />
+          </View>
+          <TouchableOpacity style={styles.currentBtn} onPress={handleSetCurrentTime}>
+            <Text style={styles.currentBtnText}>現在時刻</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.dateTimeContainer}>
-          <Feather name="calendar" size={24} color={COLORS.text} style={styles.calendarIcon} />
-          <View style={styles.dateTimeBadge}>
-            <Text style={styles.dateTimeText}>{dateLabel}</Text>
+        <TextInput
+          style={styles.menuInput}
+          placeholder="メニュー名を入力"
+          placeholderTextColor={COLORS.grayText}
+          value={menu}
+          onChangeText={setMenu}
+        />
+
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <Text style={styles.label}>回数: <Text style={styles.highlight}>{count}</Text></Text>
+            {renderPicker(NUMBER_DATA, count, setCount, 10)}
           </View>
-          <View style={styles.dateTimeBadge}>
-            <Text style={styles.dateTimeText}>{timeLabel}</Text>
+          <View style={styles.half}>
+            <Text style={styles.label}>セット: <Text style={styles.highlight}>{sets}</Text></Text>
+            {renderPicker(SET_DATA, sets, setSets, 3)}
           </View>
-          <TouchableOpacity style={styles.currentTimeButton} onPress={handleSetCurrentTime}>
-            <Text style={styles.currentTimeButtonText}>現在時刻</Text>
-          </TouchableOpacity>
         </View>
 
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="メニュー"
-            placeholderTextColor={COLORS.grayText}
-            value={menu}
-            onChangeText={setMenu}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="回数"
-            placeholderTextColor={COLORS.grayText}
-            keyboardType="numeric"
-            value={count}
-            onChangeText={setCount}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="時間（秒）"
-            placeholderTextColor={COLORS.grayText}
-            keyboardType="numeric"
-            value={time}
-            onChangeText={setTime}
-          />
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="メモ"
-            placeholderTextColor={COLORS.grayText}
-            multiline
-            numberOfLines={6}
-            value={memo}
-            onChangeText={setMemo}
-            textAlignVertical="top"
-          />
+        <View style={styles.timeSection}>
+          <Text style={styles.label}>時間: <Text style={styles.highlight}>{mins}分 {secs}秒</Text></Text>
+          <View style={styles.timePickers}>
+            <View style={{flex:1}}>{renderPicker(NUMBER_DATA, mins, setMins, 0)}</View>
+            <Text style={styles.timeSeparator}>:</Text>
+            <View style={{flex:1}}>{renderPicker(SEC_DATA, secs, setSecs, 30)}</View>
+          </View>
         </View>
+
+        <TextInput
+          style={styles.memoInput}
+          placeholder="メモを入力"
+          placeholderTextColor={COLORS.grayText}
+          multiline
+          value={memo}
+          onChangeText={setMemo}
+        />
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.footerTab}>
-          <Ionicons name="home-outline" size={28} color={COLORS.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <MaterialCommunityIcons name="chart-bar" size={28} color={COLORS.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <MaterialCommunityIcons name="email-outline" size={28} color={COLORS.text} />
-          <Text style={styles.aiBadge}>AI</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <FontAwesome5 name="calendar-alt" size={26} color={COLORS.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: COLORS.background,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primaryGreen,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.grayBackground,
-    borderRadius: 25,
-    padding: 2,
-    marginVertical: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 23,
-  },
-  activeTab: {
-    backgroundColor: COLORS.white,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  tabText: {
-    color: COLORS.grayText,
-    fontWeight: '500',
-    fontSize: 15,
-  },
-  activeTabText: {
-    color: COLORS.text,
-    fontWeight: 'bold',
-  },
-  dateTimeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 25,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  calendarIcon: {
-    marginRight: 4,
-  },
-  dateTimeBadge: {
-    backgroundColor: COLORS.grayBackground,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-  },
-  dateTimeText: {
-    color: COLORS.text,
-    fontSize: 15,
-  },
-  currentTimeButton: {
-    backgroundColor: COLORS.primaryGreen,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-  },
-  currentTimeButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  formContainer: {
-    gap: 15,
-  },
-  input: {
-    backgroundColor: COLORS.grayBackground,
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  textArea: {
-    height: 150,
-    paddingTop: 15,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    flexDirection: 'row',
-    backgroundColor: COLORS.primaryGreen,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  footerTab: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  aiBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -10,
-    backgroundColor: COLORS.background,
-    color: COLORS.text,
-    fontSize: 10,
-    fontWeight: 'bold',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 5,
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  headerTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
+  saveButton: { backgroundColor: COLORS.primaryGreen, paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
+  saveButtonText: { color: COLORS.white, fontWeight: 'bold' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  tabContainer: { flexDirection: 'row', backgroundColor: COLORS.grayBackground, borderRadius: 25, padding: 3, marginBottom: 20 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 22 },
+  activeTab: { backgroundColor: COLORS.white },
+  tabText: { color: COLORS.grayText, fontSize: 13 },
+  activeTabText: { color: COLORS.text, fontWeight: 'bold' },
+  dateTimeRow: { flexDirection: 'row', gap: 8, marginBottom: 15, alignItems: 'center' },
+  dateBadge: { backgroundColor: COLORS.white, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.grayBackground },
+  // ★ 修正：TextInput用にpaddingをリセット（Androidで文字が見切れるのを防ぐため）
+  dateText: { fontSize: 14, color: COLORS.text, padding: 0 }, 
+  currentBtn: { backgroundColor: COLORS.primaryGreen, padding: 10, borderRadius: 12 },
+  currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
+  menuInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, fontSize: 18, marginBottom: 20, color: COLORS.text },
+  row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  half: { flex: 1 },
+  label: { fontSize: 14, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
+  highlight: { color: COLORS.primaryGreen, fontSize: 18, fontWeight: 'bold' },
+  
+  pickerWrapper: { 
+    height: 60, 
+    backgroundColor: COLORS.white, 
+    borderRadius: 15, 
+    justifyContent: 'center', 
     overflow: 'hidden',
+    position: 'relative'
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.text,
+  centerIndicator: { 
+    position: 'absolute', 
+    left: '50%', 
+    marginLeft: -ITEM_WIDTH/2, 
+    width: ITEM_WIDTH, 
+    height: 45, 
+    borderRadius: 10, 
+    backgroundColor: '#A4C63915', 
+    borderWidth: 2, 
+    borderColor: COLORS.primaryGreen, 
+    zIndex: 10 
   },
+  
+  numberItem: { 
+    width: ITEM_WIDTH, 
+    height: '100%',
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  numberText: { 
+    fontSize: 16, 
+    color: COLORS.grayText,
+    textAlign: 'center', 
+    width: '100%',
+  },
+  activeNumberText: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: COLORS.primaryGreen 
+  },
+  
+  timeSection: { marginBottom: 20 },
+  timePickers: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  timeSeparator: { fontSize: 20, fontWeight: 'bold', color: COLORS.grayText },
+  memoInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, height: 80, textAlignVertical: 'top', color: COLORS.text },
 });
