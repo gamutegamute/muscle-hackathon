@@ -1,3 +1,4 @@
+//home画面
 import { useFocusEffect } from '@react-navigation/native'; // ★追加：画面に戻った時に更新する鍵
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';

@@ -1,3 +1,4 @@
+//記録画面
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -29,7 +30,7 @@ const NUMBER_DATA = Array.from({ length: 101 }, (_, i) => i);
 const SET_DATA = Array.from({ length: 21 }, (_, i) => i);
 const SEC_DATA = Array.from({ length: 60 }, (_, i) => i);
 
-// ★ ピッカーコンポーネント（メモ化して動作を軽くし、フリーズを防止）
+// ★ ピッカーコンポーネント
 const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef }: any) => {
   const [pickerWidth, setPickerWidth] = useState(0);
   const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
@@ -82,18 +83,27 @@ export default function DetailedRecordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // ★ 追加：最後に処理したパラメータを記録する（二重上書き防止）
   const lastParamsRef = useRef("");
 
-  // 4つのピッカー用リモコン
   const countRef = useRef<FlatList>(null);
   const setsRef = useRef<FlatList>(null);
   const minsRef = useRef<FlatList>(null);
   const secsRef = useRef<FlatList>(null);
 
+  // 現在時刻を取得するための補助関数
+  const getNowStrings = () => {
+    const now = new Date();
+    const date = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return { date, time };
+  };
+
+  const initialDateTime = getNowStrings();
   const [activeTab, setActiveTab] = useState('input');
-  const [dateStr, setDateStr] = useState('2026/03/20');
-  const [timeStr, setTimeStr] = useState('17:15');
+  
+  // ★ 初期値を現在の時刻に変更
+  const [dateStr, setDateStr] = useState(initialDateTime.date);
+  const [timeStr, setTimeStr] = useState(initialDateTime.time);
 
   const [menu, setMenu] = useState('');
   const [count, setCount] = useState(10);
@@ -102,7 +112,11 @@ export default function DetailedRecordScreen() {
   const [secs, setSecs] = useState(30);
   const [memo, setMemo] = useState('');
 
-  // AIからのデータ反映ロジック
+  // ★ 追加：画面がマウントされた（開かれた）時に現在時刻をセットする
+  useEffect(() => {
+    handleSetCurrentTime();
+  }, []);
+
   useEffect(() => {
     const paramsKey = JSON.stringify(params);
     if (paramsKey === lastParamsRef.current || !params.menu) return;
@@ -137,6 +151,19 @@ export default function DetailedRecordScreen() {
     handleSetCurrentTime();
   }, [params]);
 
+  const adjustDate = (days: number) => {
+    try {
+      const current = new Date(dateStr.replace(/\//g, '-'));
+      current.setDate(current.getDate() + days);
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      setDateStr(`${y}/${m}/${d}`);
+    } catch (e) {
+      console.log("日付パースエラー");
+    }
+  };
+
   const handleSetCurrentTime = () => {
     const now = new Date();
     setDateStr(`${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`);
@@ -154,8 +181,7 @@ export default function DetailedRecordScreen() {
       return;
     }
 
-    // ★ 共通データへの書き込み処理（ホーム画面の累計時間とカレンダーが更新されます）
-    const totalMins = mins + (secs > 0 ? 1 : 0); // 秒があれば1分繰り上げ
+    const totalMins = mins + (secs > 0 ? 1 : 0);
     workoutData.addWorkout(totalMins, dateStr);
 
     console.log('保存完了:', { menu, count, sets, mins, secs });
@@ -187,14 +213,26 @@ export default function DetailedRecordScreen() {
         </View>
 
         <View style={styles.dateTimeRow}>
-          <View style={styles.dateBadge}>
-            <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} />
+          <View style={styles.dateControlGroup}>
+            <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustDate(-1)}>
+              <Text style={styles.adjustBtnText}>－</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.dateBadge}>
+              <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
+            </View>
+
+            <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustDate(1)}>
+              <Text style={styles.adjustBtnText}>＋</Text>
+            </TouchableOpacity>
           </View>
+
           <View style={styles.dateBadge}>
-            <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} />
+            <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
           </View>
+
           <TouchableOpacity style={styles.currentBtn} onPress={handleSetCurrentTime}>
-            <Text style={styles.currentBtnText}>現在時刻</Text>
+            <Text style={styles.currentBtnText}>現在</Text>
           </TouchableOpacity>
         </View>
 
@@ -255,11 +293,16 @@ const styles = StyleSheet.create({
   activeTab: { backgroundColor: COLORS.white },
   tabText: { color: COLORS.grayText, fontSize: 13 },
   activeTabText: { color: COLORS.text, fontWeight: 'bold' },
-  dateTimeRow: { flexDirection: 'row', gap: 8, marginBottom: 15, alignItems: 'center' },
-  dateBadge: { backgroundColor: COLORS.white, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: COLORS.grayBackground },
-  dateText: { fontSize: 14, color: COLORS.text, padding: 0 }, 
-  currentBtn: { backgroundColor: COLORS.primaryGreen, padding: 10, borderRadius: 12 },
+
+  dateTimeRow: { flexDirection: 'row', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
+  dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dateBadge: { backgroundColor: COLORS.white, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.grayBackground },
+  dateText: { fontSize: 13, color: COLORS.text, padding: 0, textAlign: 'center' }, 
+  adjustBtn: { backgroundColor: COLORS.white, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.primaryGreen },
+  adjustBtnText: { color: COLORS.primaryGreen, fontSize: 18, fontWeight: 'bold' },
+  currentBtn: { backgroundColor: COLORS.primaryGreen, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
   currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
+
   menuInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, fontSize: 18, marginBottom: 20, color: COLORS.text },
   row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   half: { flex: 1 },

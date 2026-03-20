@@ -1,6 +1,9 @@
+//aiのチャット欄
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+// ★ 追加：共通データ（脳）を読み込む
+import { workoutData } from '../globalState';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -33,7 +36,7 @@ export default function AiChatScreen() {
   ]);
   const [inputText, setInputText] = useState('');
 
-  // ★ 変更: レベルごとに異なるサジェストを用意
+  // ★ 変更: レレベルごとに異なるサジェストを用意
   const levelOptions = ['初心者（これから始める）', '中級者（週1〜2回）', '上級者（ガチ勢🔥）'];
   const promptsBeginner = ['今日のメニューは？', '筋肉痛がひどい…', 'プロテインって必要？'];
   const promptsIntermediate = ['今日のメニューは？', '停滞期を抜け出したい', '分割法って？'];
@@ -64,6 +67,14 @@ export default function AiChatScreen() {
 
   const handleSuggestionPress = (prompt: string) => {
     setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: prompt }]);
+
+    // ★ 追加：AI相談回数をカウント
+    workoutData.incrementAiCount();
+
+    // ★ 追加：称号を新しくゲットしていたら、即座にお祝い画面へ！
+    if (workoutData.latestAchievementId) {
+      router.push('/achievement_unlocked');
+    }
 
     // レベル選択がまだの場合
     if (userLevel === null) {
@@ -247,6 +258,15 @@ export default function AiChatScreen() {
             <TouchableOpacity style={styles.sendButton} onPress={() => {
               if (!inputText.trim()) return;
               setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: inputText }]);
+              
+              // ★ 追加：手入力時もAI相談回数をカウント
+              workoutData.incrementAiCount();
+
+              // ★ 追加：新しい称号があれば即ジャンプ！
+              if (workoutData.latestAchievementId) {
+                router.push('/achievement_unlocked');
+              }
+              
               setInputText('');
               simulateAiResponse([
                 { id: Date.now() + 1, sender: 'ai', text: 'なるほど！サポートしますので一緒に頑張りましょう！' }
@@ -264,7 +284,6 @@ export default function AiChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: COLORS.background, <- ★SafeAreaViewの背景色は直接インラインで指定する形に変更しました
   },
   header: {
     paddingTop: 10,
