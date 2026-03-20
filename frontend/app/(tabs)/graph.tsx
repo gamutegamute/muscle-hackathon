@@ -1,4 +1,3 @@
-//figma作成したらreactにして持ってきます
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -207,8 +206,8 @@ export default function GraphScreen() {
           </View>
           <View style={styles.infoContent}>
             <Text style={styles.infoText}>
-              現在は <Text style={styles.highlight}>{streakDays}日連続</Text>
-              {"\n"}トレーニング中です。
+              現在は <Text style={styles.highlight}>{streakDays}日連続</Text>でトレーニング中です。
+              {"\n"}あと少しで実績解除です！
             </Text>
           </View>
         </View>

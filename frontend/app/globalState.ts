@@ -8,6 +8,9 @@ export const workoutData = {
   unlockedAchievements: [] as string[],
   latestAchievementId: null as string | null, 
 
+  records: [] as { date: string; minutes: number }[],
+
+
   // ★ 現在装備中の称号（デフォルト）
   equippedBadge: '🥚 はじまりの一歩', 
 
@@ -36,15 +39,34 @@ export const workoutData = {
   },
 
   addWorkout: (mins: number, dateStr: string) => {
-    workoutData.latestAchievementId = null;
-    workoutData.totalMinutes += mins;
-    const formattedDate = dateStr.replace(/\//g, '-'); 
-    if (!workoutData.markedDates[formattedDate]) {
-      workoutData.streakDays += 1;
-    }
-    workoutData.markedDates[formattedDate] = { selected: true, selectedColor: '#A4C639' };
-    workoutData.checkAchievements();
-  },
+  workoutData.latestAchievementId = null;
+
+  // 🔥 日付統一（graphと一致させる）
+  const formattedDate = new Date(dateStr.replace(/\//g, '-'))
+    .toISOString()
+    .split('T')[0];
+
+  // 🔥 recordsに追加（←これがグラフに必要）
+  workoutData.records.push({
+    date: formattedDate,
+    minutes: mins
+  });
+
+  // 累計
+  workoutData.totalMinutes += mins;
+
+  // ストリーク
+  if (!workoutData.markedDates[formattedDate]) {
+    workoutData.streakDays += 1;
+  }
+
+  workoutData.markedDates[formattedDate] = {
+    selected: true,
+    selectedColor: '#A4C639'
+  };
+
+  workoutData.checkAchievements();
+},
 
   unlock: (id: string) => {
     if (!workoutData.unlockedAchievements.includes(id)) {
@@ -59,3 +81,4 @@ export const workoutData = {
     workoutData.latestAchievementId = null;
   }
 };
+
