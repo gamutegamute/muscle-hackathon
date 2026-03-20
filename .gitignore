@@ -30,3 +30,9 @@ serviceAccountKey.json
 .vscode/
 .idea/
 .DS_Store
+
+# Node
+node_modules/
+
+# Expo
+.expo/
