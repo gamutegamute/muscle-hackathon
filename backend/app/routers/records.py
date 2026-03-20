@@ -7,7 +7,10 @@ router = APIRouter(prefix="/records", tags=["records"])
 
 
 def save_record(data: dict):
-    db.collection("records").add(data)
+    doc_ref = db.collection("records").document()
+    data["recordId"] = doc_ref.id
+    doc_ref.set(data)
+    return data
 
 
 def get_user_records(user_id: str):
@@ -28,20 +31,11 @@ def create_record(record: RecordCreate):
         "createdAt": datetime.utcnow()
     }
 
-    save_record(record_data)
+    saved_data = save_record(record_data)
 
     return {
         "message": "record saved",
-        "data": record_data
-    }
-
-
-@router.get("/{user_id}")
-def get_records(user_id: str):
-    records = get_user_records(user_id)
-
-    return {
-        "records": records
+        "data": saved_data
     }
 
 
