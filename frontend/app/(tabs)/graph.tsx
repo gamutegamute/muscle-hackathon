@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -27,30 +27,59 @@ const DAYS = ['日','月','火','水','木','金','土'];
 
 const GRAPH_HEIGHT = 160;
 const MAX_VALUE = 60;
-const OFFSET = 25; // 🔥 ここで位置調整
+const OFFSET = 25;
 
 export default function GraphScreen() {
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [streakDays, setStreakDays] = useState(0);
+  const [todayStr, setTodayStr] = useState('');
 
+  // 🔥 ローカル日付関数（超重要）
+  const getLocalDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // 🔥 画面フォーカス時更新
   useFocusEffect(
     useCallback(() => {
       setTotalMinutes(workoutData.totalMinutes || 0);
       setStreakDays(workoutData.streakDays || 0);
+      setTodayStr(getLocalDate(new Date()));
     }, [])
   );
 
+  // 🔥 日付変化を監視（0時対応）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = getLocalDate(new Date());
+
+      setTodayStr(prev => {
+        if (prev !== now) {
+          return now;
+        }
+        return prev;
+      });
+    }, 60000); // 1分ごと
+
+    return () => clearInterval(interval);
+  }, []);
+
   const records = workoutData.records || [];
 
+  // 🔥 日付→分
   const recordMap = useMemo(() => {
     const map: Record<string, number> = {};
     records.forEach(r => {
-      const key = new Date(r.date).toISOString().split('T')[0];
+      const key = r.date;
       map[key] = (map[key] || 0) + (r.minutes || 0);
     });
     return map;
   }, [records]);
 
+  // 🔥 28日生成（ローカル時間）
   const days = useMemo(() => {
     const arr = [];
     const today = new Date();
@@ -64,7 +93,7 @@ export default function GraphScreen() {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
 
-      const key = d.toISOString().split('T')[0];
+      const key = getLocalDate(d);
 
       arr.push({
         date: key,
@@ -79,8 +108,6 @@ export default function GraphScreen() {
   for (let i = 0; i < 4; i++) {
     weeks.push(days.slice(i * 7, i * 7 + 7));
   }
-
-  const todayStr = new Date().toDateString();
 
   const gridLines = [];
   for (let i = 0; i <= MAX_VALUE; i += 10) {
@@ -113,21 +140,16 @@ export default function GraphScreen() {
               <View style={styles.chartCard}>
                 <View style={styles.chartBottomArea}>
 
-                  {/* 🔥 メモリ */}
+                  {/* メモリ */}
                   <View style={styles.gridContainer}>
                     {gridLines.map((g, i) => {
-
                       const y =
                         GRAPH_HEIGHT - (g / MAX_VALUE) * GRAPH_HEIGHT - OFFSET;
 
                       return (
                         <View key={i}>
                           <View style={[styles.gridLine, { top: y }]} />
-
-                          <Text style={[
-                            styles.gridText,
-                            { top: y - 6 }
-                          ]}>
+                          <Text style={[styles.gridText, { top: y - 6 }]}>
                             {g}
                           </Text>
                         </View>
@@ -143,9 +165,10 @@ export default function GraphScreen() {
                       const height =
                         (value / MAX_VALUE) * GRAPH_HEIGHT;
 
+                      // 🔥 今日判定（修正済み）
+                      const isToday = item.date === todayStr;
+
                       const dateObj = new Date(item.date);
-                      const isToday =
-                        dateObj.toDateString() === todayStr;
 
                       return (
                         <TouchableOpacity
