@@ -99,7 +99,7 @@ export default function GraphScreen() {
             <Text style={styles.statLabel}>累計時間</Text>
             <Text style={styles.statValue}>
               {totalMinutes}
-              <Text style={styles.statUnit}> min</Text>
+              <Text style={styles.statLabel}> 分</Text>
             </Text>
           </View>
         </View>
