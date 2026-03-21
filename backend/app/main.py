@@ -20,3 +20,12 @@ def read_root():
 app.include_router(profile.router)
 app.include_router(records.router)
 app.include_router(ai.router)
+
+# 1. インポートを追加
+from app.routers import records, timer  # timer を増やす
+
+# ... (中略) ...
+
+# 2. ルーターを登録
+app.include_router(records.router)
+app.include_router(timer.router)  # これを追記！
