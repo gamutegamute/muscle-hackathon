@@ -12,17 +12,18 @@ export const workoutData = {
   themeColor: '#A4C639',
   isVibrationEnabled: true,
 
+  // ★ 修正：アバター画像（avatar）を保存する箱を追加！
   userProfile: {
     name: '筋肉太郎',
     age: '20',
     height: '170',
     weight: '65.5',
     bodyFat: '18.5',
+    avatar: null as string | null, // ★ ここを追加
   },
 
   colorListeners: [] as ((color: string) => void)[],
 
-  // ★ 修正：自分自身を指す時は this を使う
   setUserProfile(profileData: Partial<typeof this.userProfile>) {
     this.userProfile = { ...this.userProfile, ...profileData };
     console.log("👤 プロフィール更新:", this.userProfile);
@@ -39,7 +40,10 @@ export const workoutData = {
     this.equippedBadge = '🥚 はじまりの一歩';
     this.themeColor = '#A4C639'; 
     this.isVibrationEnabled = true;
-    this.userProfile = { name: '筋肉太郎', age: '20', height: '170', weight: '65.5', bodyFat: '18.5' };
+    
+    // ★ 修正：リセット時にも avatar: null に戻るように追加
+    this.userProfile = { name: '筋肉太郎', age: '20', height: '170', weight: '65.5', bodyFat: '18.5', avatar: null };
+    
     this.colorListeners.forEach((listener: any) => listener(this.themeColor));
     console.log("🧹 記録をリセットしました");
   },

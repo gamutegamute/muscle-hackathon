@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router'; // ★ useFocusEffectを追加
-import React, { useState, useEffect, useCallback } from 'react'; // ★ useCallbackを追加
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     FlatList,
     Modal,
@@ -12,8 +12,9 @@ import {
     TouchableOpacity,
     View,
     Switch,
+    Image, // ★ Imageコンポーネントを追加
 } from 'react-native';
-// ★ アプリ全体のデータ（脳みそ）を読み込む
+import * as ImagePicker from 'expo-image-picker'; // ★ expo-image-pickerを追加
 import { workoutData } from '../globalState';
 
 const COLORS = {
@@ -22,10 +23,9 @@ const COLORS = {
     text: '#333333',
     grayText: '#8E8E93',
     divider: '#E0E0E0',
-    accent: '#FFD700', // ゴールド
+    accent: '#FFD700', 
 };
 
-// ★ テーマカラーの選択肢
 const THEME_OPTIONS = [
     { name: 'Android', color: '#A4C639' },
     { name: 'Ocean', color: '#2196F3' },
@@ -34,7 +34,6 @@ const THEME_OPTIONS = [
     { name: 'Midnight', color: '#37474F' },
 ];
 
-// 型の定義
 interface StatusItemProps {
     label: string;
     value: string;
@@ -52,7 +51,6 @@ export default function ProfileScreen() {
     const [showHelpModal, setShowHelpModal] = useState(false); 
     const [vibeEnabled, setVibeEnabled] = useState(workoutData.isVibrationEnabled);
     
-    // ★ 名前の編集中かどうかを判定するState
     const [isNameEditing, setIsNameEditing] = useState(false); 
 
     const [theme, setTheme] = useState(workoutData.themeColor);
@@ -64,16 +62,16 @@ export default function ProfileScreen() {
         return () => unsubscribe();
     }, []);
 
-    // --- ★ ローカルState：初期値を globalState から取得するように修正 ---
+    // ★ profileステートに avatar（画像URL）を追加
     const [profile, setProfile] = useState({
         name: workoutData.userProfile?.name || '筋肉太郎',
         rank: workoutData.equippedBadge || '🥚 はじまりの一歩', 
         height: workoutData.userProfile?.height || '170',
         weight: workoutData.userProfile?.weight || '65.5',
         bodyFat: workoutData.userProfile?.bodyFat || '18.5',
+        avatar: workoutData.userProfile?.avatar || null, // 画像URL用
     });
 
-    // --- ★ 画面を開くたびに最新のプロフィール情報を読み込む ---
     useFocusEffect(
         useCallback(() => {
             setProfile(prev => ({
@@ -83,6 +81,7 @@ export default function ProfileScreen() {
                 weight: workoutData.userProfile?.weight || '65.5',
                 bodyFat: workoutData.userProfile?.bodyFat || '18.5',
                 rank: workoutData.equippedBadge || '🥚 はじまりの一歩',
+                avatar: workoutData.userProfile?.avatar || null,
             }));
         }, [])
     );
@@ -115,11 +114,28 @@ export default function ProfileScreen() {
         },
         {
             id: '4',
-            icon: 'phone-portrait-outline',
+            icon: 'pulse-outline', // 波形アイコンに変更済み
             title: '振動フィードバック',
             desc: 'タイマー終了をバイブでお知らせ。トレーニング（WORK）と休憩（REST）で振動パターンが異なります。'
         }
     ];
+
+    // --- ★ 写真フォルダを開いて画像を選ぶ処理 ---
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images, // 画像のみ
+            allowsEditing: true, // 正方形にトリミングさせる
+            aspect: [1, 1],      // 正方形比率
+            quality: 0.5,        // 画質（軽くする）
+        });
+
+        if (!result.canceled) {
+            const imageUri = result.assets[0].uri;
+            setProfile({ ...profile, avatar: imageUri });
+            // globalStateにも保存
+            workoutData.setUserProfile({ avatar: imageUri } as any);
+        }
+    };
 
     const handleSelectBadge = (badgeIcon: string, badgeName: string) => {
         const fullBadgeString = `${badgeIcon} ${badgeName}`;
@@ -155,11 +171,19 @@ export default function ProfileScreen() {
                 <Text style={styles.pageTitle}>マイページ</Text>
 
                 <View style={styles.profileHeader}>
-                    <View style={styles.avatarCircle}>
-                        <Ionicons name="person" size={50} color={theme} />
-                    </View>
+                    {/* --- ★ アバター画像部分（タップで写真選択） --- */}
+                    <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
+                        {profile.avatar ? (
+                            <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
+                        ) : (
+                            <Ionicons name="person" size={50} color={theme} />
+                        )}
+                        {/* 画像右下の小さなカメラアイコン */}
+                        <View style={[styles.cameraBadge, { backgroundColor: theme }]}>
+                            <Ionicons name="camera" size={14} color={COLORS.white} />
+                        </View>
+                    </TouchableOpacity>
 
-                    {/* --- 名前と編集ボタンのコンテナ --- */}
                     <View style={styles.nameContainer}>
                         {isNameEditing ? (
                             <TextInput
@@ -168,12 +192,10 @@ export default function ProfileScreen() {
                                 onChangeText={(val) => setProfile({ ...profile, name: val })}
                                 onBlur={() => {
                                     setIsNameEditing(false);
-                                    // ★ 名前編集完了時に globalState にも保存
                                     workoutData.setUserProfile({ name: profile.name });
                                 }} 
                                 onSubmitEditing={() => {
                                     setIsNameEditing(false);
-                                    // ★ エンター押下時にも保存
                                     workoutData.setUserProfile({ name: profile.name });
                                 }} 
                                 autoFocus
@@ -202,7 +224,6 @@ export default function ProfileScreen() {
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>現在のステータス</Text>
                         <TouchableOpacity onPress={() => {
-                            // ★ 「保存」ボタンを押した時に globalState へデータを送る
                             if (isEditing) {
                                 workoutData.setUserProfile({
                                     height: profile.height,
@@ -392,7 +413,12 @@ const styles = StyleSheet.create({
     scrollContent: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 40 },
     pageTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text, marginBottom: 20 },
     profileHeader: { alignItems: 'center', marginBottom: 30 },
-    avatarCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    
+    // ★ アバター画像のスタイル追加
+    avatarCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, position: 'relative' },
+    avatarImage: { width: 100, height: 100, borderRadius: 50 },
+    cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.white },
+    
     nameContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
     userName: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
     nameInput: { fontSize: 22, fontWeight: 'bold', borderBottomWidth: 1, padding: 0, textAlign: 'center', minWidth: 120 },
