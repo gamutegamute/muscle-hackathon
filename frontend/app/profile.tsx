@@ -22,7 +22,6 @@ export default function ProfileSettingsScreen() {
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
 
-const theme = workoutData.themeColor; // 現在のテーマ色
 
   return (
     <SafeAreaView style={styles.container}>
