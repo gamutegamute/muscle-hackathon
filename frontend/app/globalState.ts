@@ -7,95 +7,120 @@ export const workoutData = {
   markedDates: {} as any,
   unlockedAchievements: [] as string[],
   latestAchievementId: null as string | null,
-  records: [] as { date: string; minutes: number }[],
+  records: [] as { date: string; minutes: number; menu: string; memo: string }[],
   equippedBadge: '🥚 はじまりの一歩',
-  themeColor: '#A4C639', // ★ これが無いとエラーになる
+  themeColor: '#A4C639',
+  isVibrationEnabled: true,
 
-  // ★ 色が変わったことを他の画面に知らせるための予約リスト
+  userProfile: {
+    name: '筋肉太郎',
+    age: '20',
+    height: '170',
+    weight: '65.5',
+    bodyFat: '18.5',
+  },
+
   colorListeners: [] as ((color: string) => void)[],
 
-  // ★ データを完全に初期化するリセット関数
-  resetData: () => {
-    workoutData.totalMinutes = 0;
-    workoutData.streakDays = 0;
-    workoutData.aiConsultationCount = 0;
-    workoutData.markedDates = {};
-    workoutData.unlockedAchievements = [];
-    workoutData.latestAchievementId = null;
-    workoutData.records = [];
-    workoutData.equippedBadge = '🥚 はじまりの一歩';
-    workoutData.themeColor = '#A4C639'; 
-    workoutData.colorListeners.forEach(listener => listener(workoutData.themeColor));
+  // ★ 修正：自分自身を指す時は this を使う
+  setUserProfile(profileData: Partial<typeof this.userProfile>) {
+    this.userProfile = { ...this.userProfile, ...profileData };
+    console.log("👤 プロフィール更新:", this.userProfile);
+  },
+
+  resetData() {
+    this.totalMinutes = 0;
+    this.streakDays = 0;
+    this.aiConsultationCount = 0;
+    this.markedDates = {};
+    this.unlockedAchievements = [];
+    this.latestAchievementId = null;
+    this.records = [];
+    this.equippedBadge = '🥚 はじまりの一歩';
+    this.themeColor = '#A4C639'; 
+    this.isVibrationEnabled = true;
+    this.userProfile = { name: '筋肉太郎', age: '20', height: '170', weight: '65.5', bodyFat: '18.5' };
+    this.colorListeners.forEach((listener: any) => listener(this.themeColor));
     console.log("🧹 記録をリセットしました");
   },
 
-  // ★ テーマカラーの変更通知
-  setThemeColor: (color: string) => {
-    workoutData.themeColor = color;
+  setVibrationEnabled(enabled: boolean) {
+    this.isVibrationEnabled = enabled;
+    console.log("📳 バイブレーション設定:", enabled ? "ON" : "OFF");
+  },
+
+  setThemeColor(color: string) {
+    this.themeColor = color;
     const newMarkedDates = {} as any;
-    Object.keys(workoutData.markedDates).forEach(date => {
-      newMarkedDates[date] = { ...workoutData.markedDates[date], selectedColor: color };
+    Object.keys(this.markedDates).forEach((date: string) => {
+      newMarkedDates[date] = { ...this.markedDates[date], selectedColor: color };
     });
-    workoutData.markedDates = newMarkedDates;
-    workoutData.colorListeners.forEach(listener => listener(color));
+    this.markedDates = newMarkedDates;
+    this.colorListeners.forEach((listener: any) => listener(color));
     console.log("🎨 テーマカラー変更:", color);
   },
 
-  // ★ 通知の予約関数
-  subscribeColor: (listener: (color: string) => void) => {
-    workoutData.colorListeners.push(listener);
+  subscribeColor(listener: (color: string) => void) {
+    this.colorListeners.push(listener);
     return () => {
-      workoutData.colorListeners = workoutData.colorListeners.filter(l => l !== listener);
+      this.colorListeners = this.colorListeners.filter((l: any) => l !== listener);
     };
   },
 
-  incrementAiCount: () => {
-    workoutData.aiConsultationCount += 1;
-    workoutData.checkAchievements();
+  incrementAiCount() {
+    this.aiConsultationCount += 1;
+    this.checkAchievements();
   },
 
-  checkAchievements: () => {
-    workoutData.ACHIEVEMENTS.forEach(ach => {
-      if (ach.condition(workoutData)) {
-        workoutData.unlock(ach.id);
+  checkAchievements() {
+    this.ACHIEVEMENTS.forEach((ach: any) => {
+      if (ach.condition(this)) {
+        this.unlock(ach.id);
       }
     });
   },
 
-  unlock: (id: string) => {
-    if (!workoutData.unlockedAchievements.includes(id)) {
-      workoutData.unlockedAchievements.push(id);
-      workoutData.latestAchievementId = id;
+  unlock(id: string) {
+    if (!this.unlockedAchievements.includes(id)) {
+      this.unlockedAchievements.push(id);
+      this.latestAchievementId = id;
     }
   },
 
-  clearLatestAchievement: () => {
-    workoutData.latestAchievementId = null;
+  clearLatestAchievement() {
+    this.latestAchievementId = null;
   },
 
-  addWorkout: (mins: number, dateStr: string) => {
-    workoutData.latestAchievementId = null;
+  addWorkout(mins: number, dateStr: string, menu: string, memo: string) {
+    this.latestAchievementId = null;
     const formattedDate = dateStr.replace(/\//g, '-');
-    workoutData.records.push({ date: formattedDate, minutes: mins });
-    workoutData.totalMinutes += mins;
 
-    if (!workoutData.markedDates[formattedDate]) {
+    this.records.push({ 
+      date: formattedDate, 
+      minutes: mins,
+      menu: menu || "トレーニング", 
+      memo: memo || ""
+    });
+
+    this.totalMinutes += mins;
+
+    if (!this.markedDates[formattedDate]) {
       const today = new Date(formattedDate);
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
       const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-      if (workoutData.markedDates[yStr]) {
-        workoutData.streakDays += 1;
+      if (this.markedDates[yStr]) {
+        this.streakDays += 1;
       } else {
-        workoutData.streakDays = 1;
+        this.streakDays = 1;
       }
     }
 
-    workoutData.markedDates[formattedDate] = {
+    this.markedDates[formattedDate] = {
       selected: true,
-      selectedColor: workoutData.themeColor 
+      selectedColor: this.themeColor 
     };
-    workoutData.checkAchievements();
+    this.checkAchievements();
   },
 
   ACHIEVEMENTS: [

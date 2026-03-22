@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// ★ 共通データ（脳）を読み込む
+import * as Haptics from 'expo-haptics';
 import { workoutData } from './globalState';
 
 const COLORS = {
@@ -20,8 +20,6 @@ const Sparkle = ({ style, color }: { style: any, color: string }) => (
 export default function RecordCompleteScreen() {
     const router = useRouter();
     const { fromAi } = useLocalSearchParams();
-
-    // ★ 1. テーマカラー管理
     const [theme, setTheme] = useState(workoutData.themeColor);
 
     useFocusEffect(
@@ -33,9 +31,21 @@ export default function RecordCompleteScreen() {
     const streakDays = workoutData.streakDays;
     const latestId = workoutData.latestAchievementId;
     const newAchievement = workoutData.ACHIEVEMENTS.find(a => a.id === latestId);
-
-    const isAiAchievement = fromAi === 'true' || latestId?.startsWith('ai_');
+    
+    // ★ 判定：本当の「レア」だけを黒背景（isRare）にする
     const isRare = latestId === 'streak_30' || latestId === 'time_500';
+    const isAiAchievement = fromAi === 'true' || latestId?.startsWith('ai_');
+
+    useEffect(() => {
+        const triggerHaptics = async () => {
+            if (newAchievement) {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+        };
+        triggerHaptics();
+    }, [newAchievement]);
 
     const getNextTarget = (days: number) => {
         if (days < 3) return { next: 3, diff: 3 - days };
@@ -61,18 +71,15 @@ export default function RecordCompleteScreen() {
                 {newAchievement && (
                     <View style={[
                         styles.newAchievementCard, 
-                        isRare ? { borderColor: COLORS.accent, backgroundColor: '#1C1C1E' } : { borderColor: theme }
+                        // ★ 修正：isRare（30日継続など）の時だけ黒背景にする。AI実績は白背景へ。
+                        isRare ? { borderColor: activeColor, backgroundColor: '#1C1C1E' } : { borderColor: theme, backgroundColor: COLORS.white }
                     ]}>
-                        <View style={[
-                            styles.newBadgeLabel, 
-                            { backgroundColor: activeColor }
-                        ]}>
+                        <View style={[styles.newBadgeLabel, { backgroundColor: activeColor }]}>
                             <Text style={[styles.newBadgeLabelText, { color: isRare ? '#000' : '#FFF' }]}>
-                                {isRare ? "RARE ACHIEVEMENT!" : "NEW ACHIEVEMENT!"}
+                                {isRare ? "RARE ACHIEVEMENT!" : isAiAchievement ? "AI ACHIEVEMENT!" : "NEW ACHIEVEMENT!"}
                             </Text>
                         </View>
 
-                        {/* ★ 修正：文字に被らない位置（四隅）にキラキラを配置 */}
                         <Sparkle style={{ top: 15, left: 25 }} color={activeColor} />
                         <Sparkle style={{ top: 60, right: 35 }} color={activeColor} />
                         <Sparkle style={{ top: 110, left: 25 }} color={activeColor} />
@@ -81,8 +88,11 @@ export default function RecordCompleteScreen() {
                             <Text style={{ fontSize: 48 }}>{newAchievement.icon}</Text>
                         </View>
                         
-                        {/* ★ 文字列の zIndex を上げてキラキラより前面に */}
-                        <Text style={[styles.newName, isRare && { color: COLORS.white }]}>{newAchievement.name}</Text>
+                        {/* ★ 修正：レア（黒背景）の時だけ白文字、それ以外（AI含む）は通常文字色 */}
+                        <Text style={[styles.newName, { color: isRare ? COLORS.white : COLORS.text }]}>
+                            {newAchievement.name}
+                        </Text>
+                        
                         <Text style={[styles.newSub, { color: activeColor }]}>
                             新しい称号を獲得しました！
                         </Text>
@@ -146,8 +156,7 @@ const styles = StyleSheet.create({
     newBadgeLabel: { position: 'absolute', top: -12, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, zIndex: 20 },
     newBadgeLabelText: { fontWeight: 'bold', fontSize: 11 },
     newIconCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', marginBottom: 15, borderWidth: 4, borderColor: 'rgba(255,255,255,0.3)' },
-    // ★ 文字の zIndex を設定してキラキラより手前に
-    newName: { fontSize: 24, fontWeight: 'bold', color: '#333', textAlign: 'center', zIndex: 10 },
+    newName: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', zIndex: 10 },
     newSub: { fontSize: 14, marginTop: 5, fontWeight: '500', zIndex: 10 },
     card: { backgroundColor: COLORS.white, borderRadius: 20, padding: 20, width: '100%', marginBottom: 20, elevation: 3 },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
@@ -156,7 +165,7 @@ const styles = StyleSheet.create({
     streakNumber: { fontSize: 64, fontWeight: 'bold', marginRight: 5 },
     streakUnit: { fontSize: 24, fontWeight: 'bold', color: COLORS.text },
     streakTarget: { fontSize: 14, color: COLORS.grayText, textAlign: 'center' },
-    sparkle: { position: 'absolute', zIndex: 1 }, // キラキラは最背面
+    sparkle: { position: 'absolute', zIndex: 1 },
     messageCard: { flexDirection: 'row', borderRadius: 15, padding: 15, width: '100%', marginBottom: 30, alignItems: 'center', gap: 15 },
     messageEmoji: { fontSize: 32 },
     messageTextWrapper: { flex: 1 },

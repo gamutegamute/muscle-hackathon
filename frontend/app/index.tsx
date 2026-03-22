@@ -12,7 +12,6 @@ export default function App() {
   const handleGuestLogin = () => {
     router.replace('/profile') //ゲストログインなので戻るボタンは未実装
   };
-const theme = workoutData.themeColor; // 現在のテーマ色
 
   return (
     <SafeAreaView style={styles.safeArea}>
