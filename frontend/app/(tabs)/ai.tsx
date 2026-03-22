@@ -1,21 +1,17 @@
-//aiのチャット欄
-import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useRef, useState, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// ★ 追加：共通データ（脳）を読み込む
+// ★ 共通データ（脳）を読み込む
 import { workoutData } from '../globalState';
 
 const COLORS = {
-  primaryGreen: '#A4C639',
   background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
   grayText: '#757575',
   aiBubble: '#E8F5E9',
-  userBubble: '#A4C639',
 };
 
-// ★メッセージデータの型定義に mins(分) と secs(秒) を追加！
 type Message = {
   id: number;
   sender: 'ai' | 'user';
@@ -28,6 +24,16 @@ export default function AiChatScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // ★ 修正1：テーマカラーを画面の見た目（State）として管理する
+  const [theme, setTheme] = useState(workoutData.themeColor);
+
+  // ★ 修正2：設定画面から戻ってきた時に最新の色に塗り替える
+  useFocusEffect(
+    useCallback(() => {
+      setTheme(workoutData.themeColor);
+    }, [])
+  );
+
   const [userLevel, setUserLevel] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -36,13 +42,11 @@ export default function AiChatScreen() {
   ]);
   const [inputText, setInputText] = useState('');
 
-  // ★ 変更: レレベルごとに異なるサジェストを用意
   const levelOptions = ['初心者（これから始める）', '中級者（週1〜2回）', '上級者（ガチ勢🔥）'];
-  const promptsBeginner = ['今日のメニューは？', '筋肉痛がひどい…', 'プロテインって必要？'];
+  const promptsBeginner = ['今日のメニューは？', '筋肉痛がひひどい…', 'プロテインって必要？'];
   const promptsIntermediate = ['今日のメニューは？', '停滞期を抜け出したい', '分割法って？'];
   const promptsAdvanced = ['今日のメニューは？', 'MAX重量を伸ばす', '追い込みのコツ'];
 
-  // 選択されたレベルに合わせて表示するサジェストを切り替え
   let currentSuggestions = levelOptions;
   if (userLevel === '初心者（これから始める）') currentSuggestions = promptsBeginner;
   else if (userLevel === '中級者（週1〜2回）') currentSuggestions = promptsIntermediate;
@@ -65,18 +69,21 @@ export default function AiChatScreen() {
     }, 1500); 
   };
 
+  const checkAndNavigate = () => {
+    if (workoutData.latestAchievementId) {
+      router.push({
+        pathname: '/record_complete',
+        params: { fromAi: 'true' }
+      });
+    }
+  };
+
   const handleSuggestionPress = (prompt: string) => {
     setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: prompt }]);
 
-    // ★ 追加：AI相談回数をカウント
     workoutData.incrementAiCount();
+    checkAndNavigate();
 
-    // ★ 追加：称号を新しくゲットしていたら、即座にお祝い画面へ！
-    if (workoutData.latestAchievementId) {
-      router.push('/achievement_unlocked');
-    }
-
-    // レベル選択がまだの場合
     if (userLevel === null) {
       setUserLevel(prompt);
       simulateAiResponse([
@@ -86,7 +93,6 @@ export default function AiChatScreen() {
       return;
     }
 
-    // ★ 変更: 3レベル × 3プロンプト ＝ 9通りの分岐！
     let aiResponses: Message[] = [];
     
     // 【初心者ルート】
@@ -150,14 +156,13 @@ export default function AiChatScreen() {
     simulateAiResponse(aiResponses);
   };
 
-  // ★ 変更: expo-routerのparamsを使って、kiroku.tsxにデータを渡す！
   const handleRecordCompletePress = (menuData?: Message['menuData']) => {
     if (menuData) {
       router.push({
         pathname: '/(tabs)/kiroku',
         params: {
           menu: menuData.name,
-          count: String(menuData.count), // URLで送るため文字列に変換
+          count: String(menuData.count),
           sets: String(menuData.sets),
           mins: String(menuData.mins),
           secs: String(menuData.secs),
@@ -169,17 +174,16 @@ export default function AiChatScreen() {
   };
 
   return (
-    // ★ 変更: SafeAreaViewをCOLORS.whiteにしてノッチの色づきを修正
     <SafeAreaView style={[styles.container, { backgroundColor: COLORS.white }]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/home')}>
-          <Text style={styles.backButtonText}>＜ 戻る</Text>
+          {/* ★ 修正3：戻るボタンの色 */}
+          <Text style={[styles.backButtonText, { color: theme }]}>＜ 戻る</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AIトレーナー相談</Text>
         <View style={{ width: 60 }} />
       </View>
 
-      {/* ★ 追加: 背景色をここで COLORS.background に設定し直す */}
       <KeyboardAvoidingView 
         style={{ flex: 1, backgroundColor: COLORS.background }} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -204,7 +208,8 @@ export default function AiChatScreen() {
               )}
               <View style={[
                 styles.bubble,
-                msg.sender === 'user' ? styles.userBubble : styles.aiBubble
+                // ★ 修正4：ユーザーの吹き出し色をテーマカラーに
+                msg.sender === 'user' ? { backgroundColor: theme } : styles.aiBubble
               ]}>
                 <Text style={[
                   styles.bubbleText,
@@ -213,8 +218,8 @@ export default function AiChatScreen() {
                 
                 {msg.showRecordButton && (
                   <TouchableOpacity 
-                    style={styles.recordCompleteButton} 
-                    // ★ 変更: メニューデータを関数に渡す
+                    // ★ 修正5：記録ボタンをテーマカラーに
+                    style={[styles.recordCompleteButton, { backgroundColor: theme }]} 
                     onPress={() => handleRecordCompletePress(msg.menuData)}
                   >
                     <Text style={styles.recordCompleteButtonText}>このメニューで記録する 💪</Text>
@@ -255,23 +260,21 @@ export default function AiChatScreen() {
               onChangeText={setInputText}
               multiline
             />
-            <TouchableOpacity style={styles.sendButton} onPress={() => {
-              if (!inputText.trim()) return;
-              setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: inputText }]);
-              
-              // ★ 追加：手入力時もAI相談回数をカウント
-              workoutData.incrementAiCount();
+            <TouchableOpacity 
+              // ★ 修正6：送信ボタンをテーマカラーに
+              style={[styles.sendButton, { backgroundColor: theme }]} 
+              onPress={() => {
+                if (!inputText.trim()) return;
+                setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: inputText }]);
+                
+                workoutData.incrementAiCount();
+                checkAndNavigate();
 
-              // ★ 追加：新しい称号があれば即ジャンプ！
-              if (workoutData.latestAchievementId) {
-                router.push('/achievement_unlocked');
-              }
-              
-              setInputText('');
-              simulateAiResponse([
-                { id: Date.now() + 1, sender: 'ai', text: 'なるほど！サポートしますので一緒に頑張りましょう！' }
-              ]);
-            }}>
+                setInputText('');
+                simulateAiResponse([
+                  { id: Date.now() + 1, sender: 'ai', text: 'なるほど！サポートしますので一緒に頑張りましょう！' }
+                ]);
+              }}>
               <Text style={styles.sendButtonText}>送信</Text>
             </TouchableOpacity>
           </View>
@@ -282,161 +285,31 @@ export default function AiChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    paddingTop: 10,
-    paddingBottom: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
-  },
-  backButton: {
-    paddingVertical: 5,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: COLORS.primaryGreen,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  chatContent: {
-    paddingHorizontal: 15,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  bubbleWrapper: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    maxWidth: '85%',
-  },
-  aiWrapper: {
-    alignSelf: 'flex-start',
-  },
-  userWrapper: {
-    alignSelf: 'flex-end',
-    flexDirection: 'row-reverse',
-  },
-  aiAvatar: {
-    backgroundColor: COLORS.white,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    zIndex: 1,
-  },
-  aiAvatarText: {
-    fontSize: 20,
-  },
-  bubble: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 15,
-    position: 'relative',
-  },
-  aiBubble: {
-    backgroundColor: COLORS.aiBubble,
-    borderTopLeftRadius: 5,
-  },
-  userBubble: {
-    backgroundColor: COLORS.userBubble,
-    borderTopRightRadius: 5,
-  },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  aiBubbleText: {
-    color: COLORS.text,
-  },
-  userBubbleText: {
-    color: COLORS.white,
-    fontWeight: '500',
-  },
-  inputArea: {
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  suggestionList: {
-    paddingVertical: 10,
-    backgroundColor: COLORS.white,
-  },
-  suggestionListContent: {
-    paddingHorizontal: 15,
-    gap: 10,
-  },
-  suggestionButton: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  suggestionButtonText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  inputBar: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 25 : 15,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: COLORS.text,
-    marginRight: 10,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: COLORS.primaryGreen,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  sendButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  recordCompleteButton: {
-    marginTop: 10,
-    backgroundColor: COLORS.primaryGreen,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 15,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  recordCompleteButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  container: { flex: 1 },
+  header: { paddingTop: 10, paddingBottom: 15, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.white },
+  backButton: { paddingVertical: 5 },
+  backButtonText: { fontSize: 16, fontWeight: '600' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  chatContent: { paddingHorizontal: 15, paddingTop: 20, paddingBottom: 20 },
+  bubbleWrapper: { flexDirection: 'row', marginBottom: 15, maxWidth: '85%' },
+  aiWrapper: { alignSelf: 'flex-start' },
+  userWrapper: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
+  aiAvatar: { backgroundColor: COLORS.white, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1, borderColor: '#E0E0E0', zIndex: 1 },
+  aiAvatarText: { fontSize: 20 },
+  bubble: { paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, position: 'relative' },
+  aiBubble: { backgroundColor: COLORS.aiBubble, borderTopLeftRadius: 5 },
+  bubbleText: { fontSize: 15, lineHeight: 22 },
+  aiBubbleText: { color: COLORS.text },
+  userBubbleText: { color: COLORS.white, fontWeight: '500' },
+  inputArea: { backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
+  suggestionList: { paddingVertical: 10, backgroundColor: COLORS.white },
+  suggestionListContent: { paddingHorizontal: 15, gap: 10 },
+  suggestionButton: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E0E0E0' },
+  suggestionButtonText: { fontSize: 14, color: COLORS.text },
+  inputBar: { backgroundColor: COLORS.white, paddingHorizontal: 15, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', paddingBottom: Platform.OS === 'ios' ? 25 : 15 },
+  textInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, fontSize: 15, color: COLORS.text, marginRight: 10, maxHeight: 100 },
+  sendButton: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
+  sendButtonText: { color: COLORS.white, fontWeight: 'bold', fontSize: 15 },
+  recordCompleteButton: { marginTop: 10, paddingHorizontal: 15, paddingVertical: 10, borderRadius: 15, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 2 },
+  recordCompleteButtonText: { color: COLORS.white, fontWeight: 'bold', fontSize: 14 },
 });

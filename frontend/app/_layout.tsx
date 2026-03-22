@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { workoutData } from './globalState';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -11,7 +12,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
+const theme = workoutData.themeColor; // 現在のテーマ色
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       {/* ★ screenOptions={{ headerShown: false }} を追加しました。

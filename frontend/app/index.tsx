@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'; //追加：移動用ツールインポート
 import React, { useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { workoutData } from './globalState';
 
 export default function App() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function App() {
   const handleGuestLogin = () => {
     router.replace('/profile') //ゲストログインなので戻るボタンは未実装
   };
+const theme = workoutData.themeColor; // 現在のテーマ色
 
   return (
     <SafeAreaView style={styles.safeArea}>

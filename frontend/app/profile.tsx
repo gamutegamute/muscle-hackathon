@@ -2,6 +2,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { workoutData } from './globalState';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -20,6 +21,8 @@ export default function ProfileSettingsScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
+
+const theme = workoutData.themeColor; // 現在のテーマ色
 
   return (
     <SafeAreaView style={styles.container}>

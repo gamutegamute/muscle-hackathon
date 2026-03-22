@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,7 +16,6 @@ import {
 import { workoutData } from '../globalState';
 
 const COLORS = {
-  primaryGreen: '#A4C639',
   background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
@@ -31,16 +30,13 @@ const NUMBER_DATA = Array.from({ length: 101 }, (_, i) => i);
 const SET_DATA = Array.from({ length: 21 }, (_, i) => i);
 const SEC_DATA = Array.from({ length: 60 }, (_, i) => i);
 
-// ★ stylesを一番上に配置（赤線エラー防止・ボリュームの維持）
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
-  saveBtn: { backgroundColor: COLORS.primaryGreen, paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
+  saveBtn: { paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
   saveBtnText: { color: 'white', fontWeight: 'bold' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  
-  // デバッグ用UIスタイル
   dateTimeRow: { flexDirection: 'row', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
   dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dateBadge: { 
@@ -50,22 +46,15 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     borderWidth: 1, 
     borderColor: '#DDD',
-    minWidth: 100, // ★サイズ固定で震えを防止
+    minWidth: 100,
     height: 45, 
     justifyContent: 'center'
   },
-  dateText: { 
-    fontSize: 13, 
-    color: COLORS.text, 
-    padding: 0, 
-    textAlign: 'center',
-    height: 20, // ★高さを明示的に固定して震えを防止
-  }, 
-  adjustBtn: { backgroundColor: COLORS.white, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.primaryGreen },
-  adjustBtnText: { color: COLORS.primaryGreen, fontSize: 18, fontWeight: 'bold' },
-  currentBtn: { backgroundColor: COLORS.primaryGreen, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
+  dateText: { fontSize: 13, color: COLORS.text, padding: 0, textAlign: 'center', height: 20 }, 
+  adjustBtn: { backgroundColor: COLORS.white, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  adjustBtnText: { fontSize: 18, fontWeight: 'bold' },
+  currentBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
   currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
-
   tabContainer: { flexDirection: 'row', backgroundColor: COLORS.grayBackground, borderRadius: 15, padding: 4, marginBottom: 20 },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
   activeTab: { backgroundColor: COLORS.white },
@@ -75,12 +64,12 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   half: { flex: 1 },
   label: { fontSize: 14, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
-  highlight: { color: COLORS.primaryGreen, fontSize: 18, fontWeight: 'bold' },
+  highlight: { fontSize: 18, fontWeight: 'bold' },
   pickerWrapper: { height: 60, backgroundColor: COLORS.white, borderRadius: 15, justifyContent: 'center', position: 'relative', overflow: 'hidden' },
-  centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH/2, width: ITEM_WIDTH, height: 45, borderRadius: 10, backgroundColor: '#A4C63915', borderWidth: 2, borderColor: COLORS.primaryGreen, zIndex: 10 },
+  centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH/2, width: ITEM_WIDTH, height: 45, borderRadius: 10, borderWidth: 2, zIndex: 10 },
   numberItem: { width: ITEM_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' },
   numberText: { fontSize: 16, color: COLORS.grayText },
-  activeNumberText: { fontSize: 22, fontWeight: 'bold', color: COLORS.primaryGreen },
+  activeNumberText: { fontSize: 22, fontWeight: 'bold' },
   timeSection: { marginBottom: 20 },
   timePickers: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeSeparator: { fontSize: 20, fontWeight: 'bold', color: COLORS.grayText },
@@ -94,25 +83,29 @@ const styles = StyleSheet.create({
   valueText: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
   unitText: { fontSize: 12, color: COLORS.grayText, marginLeft: 4 },
   divider: { height: 1, backgroundColor: '#EEE', marginVertical: 15 },
-  startBtn: { backgroundColor: COLORS.primaryGreen, padding: 18, borderRadius: 15, marginTop: 20, alignItems: 'center' },
+  startBtn: { padding: 18, borderRadius: 15, marginTop: 20, alignItems: 'center' },
   startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   timerDisplayContainer: { alignItems: 'center', paddingVertical: 10 },
-  phaseText: { fontSize: 22, fontWeight: 'bold', color: COLORS.primaryGreen, marginBottom: 10 },
+  phaseText: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
   timeLeftText: { fontSize: 80, fontWeight: 'bold', color: COLORS.text, fontFamily: 'monospace' },
   roundText: { fontSize: 18, color: COLORS.grayText, marginBottom: 20 },
   controlRow: { flexDirection: 'row', gap: 15, marginTop: 10 },
   controlBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   controlBtnText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-  inlineSaveBtn: { backgroundColor: COLORS.primaryGreen, width: '100%', paddingVertical: 15, borderRadius: 12, marginTop: 25, alignItems: 'center' },
+  inlineSaveBtn: { width: '100%', paddingVertical: 15, borderRadius: 12, marginTop: 25, alignItems: 'center' },
 });
 
 // --- コンポーネント ---
-const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef }: any) => {
+const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme }: any) => {
   const [pickerWidth, setPickerWidth] = useState(0);
   const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
+
+  // ★ 修正1：ピッカー内部の強制スクロールuseEffectを削除しました
+  // これで、ユーザーが自分の意志でスクロールした時に引き戻されることがなくなります
+
   return (
     <View style={styles.pickerWrapper} onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}>
-      <View style={styles.centerIndicator} pointerEvents="none" />
+      <View style={[styles.centerIndicator, { borderColor: theme, backgroundColor: theme + '15' }]} pointerEvents="none" />
       {pickerWidth > 0 && (
         <FlatList
           ref={pickerRef}
@@ -131,7 +124,7 @@ const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef }: any
           contentContainerStyle={{ paddingHorizontal: sidePadding }}
           renderItem={({ item }) => (
             <View style={styles.numberItem}>
-              <Text style={[styles.numberText, currentVal === item && styles.activeNumberText]}>{item}</Text>
+              <Text style={[styles.numberText, currentVal === item && [styles.activeNumberText, { color: theme }]]}>{item}</Text>
             </View>
           )}
         />
@@ -162,9 +155,15 @@ const Stepper = ({ label, value, onUpdate, min = 0, max = 99, unit = "" }: any) 
 export default function DetailedRecordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [activeTab, setActiveTab] = useState('input');
+  const [theme, setTheme] = useState(workoutData.themeColor);
 
-  // 日付初期設定
+  useFocusEffect(
+    useCallback(() => {
+      setTheme(workoutData.themeColor);
+    }, [])
+  );
+
+  const [activeTab, setActiveTab] = useState('input');
   const getToday = () => {
     const now = new Date();
     return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
@@ -175,41 +174,36 @@ export default function DetailedRecordScreen() {
   };
 
   const [menu, setMenu] = useState('');
-  const [dateStr, setDateStr] = useState(getToday()); // ★初期値を設定してバグ防止
+  const [dateStr, setDateStr] = useState(getToday());
   const [timeStr, setTimeStr] = useState(getTime()); 
   const [memo, setMemo] = useState('');
-
   const [count, setCount] = useState(10);
   const [sets, setSets] = useState(3);
   const [mins, setMins] = useState(0);
   const [secs, setSecs] = useState(30);
-
   const [workMin, setWorkMin] = useState(0);
   const [workSec, setWorkSec] = useState(30);
   const [restMin, setRestMin] = useState(0);
   const [restSec, setRestSec] = useState(10);
   const [rounds, setRounds] = useState(3);
-
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<'IDLE' | 'WORK' | 'REST' | 'FINISH'>('IDLE');
   const [currentRound, setCurrentRound] = useState(1);
   const [timeLeft, setTimeLeft] = useState(0);
   const [swTime, setSwTime] = useState(0);
 
-  const timerRef = useRef<any>(null);
-  const swRef = useRef<any>(null);
   const countRef = useRef<FlatList>(null);
   const setsRef = useRef<FlatList>(null);
   const minsRef = useRef<FlatList>(null); 
   const secsRef = useRef<FlatList>(null);
+  const timerRef = useRef<any>(null);
+  const swRef = useRef<any>(null);
 
   const handleSetCurrentTime = () => {
-    const now = new Date();
     setDateStr(getToday());
     setTimeStr(getTime());
   };
 
-  // ★ 日付調整：文字列をパースして確実にプラスマイナスするように修正
   const adjustDate = (days: number) => {
     try {
       const parts = dateStr.match(/\d+/g);
@@ -229,24 +223,34 @@ export default function DetailedRecordScreen() {
     } catch (e) { console.log("日付調整失敗"); }
   };
 
+  // ★ 修正2：AIからのメニューを読み込む処理
+  // 依存配列に params.menu だけを入れることで、「メニュー名が変わった時（AIから来た時）」だけ実行されます
   useEffect(() => {
     if (params.menu) {
+      const c = Number(params.count) || 10;
+      const s = Number(params.sets) || 3;
+      const m = Number(params.mins) || 0;
+      const sec = Number(params.secs) || 30;
+
+      // 各Stateを更新
       setMenu(params.menu as string);
-      const c = params.count ? Number(params.count) : 10;
-      const s = params.sets ? Number(params.sets) : 3;
-      const m = params.mins ? Number(params.mins) : 0;
-      const sec = (params.secs && Number(params.secs) !== 0) ? Number(params.secs) : 30;
-      setCount(c); setSets(s); setRounds(s); setMins(m); setSecs(sec); setWorkMin(m); setWorkSec(sec);
+      setCount(c);
+      setSets(s);
+      setRounds(s);
+      setMins(m);
+      setSecs(sec);
+      setWorkMin(m);
+      setWorkSec(sec);
+
+      // ★ ここで「最初の1回」だけ強制スクロールを実行します
       setTimeout(() => {
-        try {
-          countRef.current?.scrollToIndex({ index: c, animated: true });
-          setsRef.current?.scrollToIndex({ index: s, animated: true });
-          minsRef.current?.scrollToIndex({ index: m, animated: true });
-          secsRef.current?.scrollToIndex({ index: sec, animated: true });
-        } catch (e) {}
-      }, 500);
+        countRef.current?.scrollToIndex({ index: c, animated: true });
+        setsRef.current?.scrollToIndex({ index: s, animated: true });
+        minsRef.current?.scrollToIndex({ index: m, animated: true });
+        secsRef.current?.scrollToIndex({ index: sec, animated: true });
+      }, 300);
     }
-  }, [params]);
+  }, [params.menu]); // params.menu が変わった時（AI提案から遷移した時）のみ発火
 
   const validateAndSave = (finalMins: number) => {
     if (!menu.trim()) {
@@ -292,22 +296,27 @@ export default function DetailedRecordScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>記録</Text>
         {activeTab === 'input' && (
-          <TouchableOpacity style={styles.saveBtn} onPress={() => validateAndSave(mins + (secs > 0 ? 1 : 0))}>
+          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(mins + (secs > 0 ? 1 : 0))}>
             <Text style={styles.saveBtnText}>保存</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
         <View style={styles.dateTimeRow}>
           <View style={styles.dateControlGroup}>
-            <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustDate(-1)}><Text style={styles.adjustBtnText}>－</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
+                <Text style={[styles.adjustBtnText, { color: theme }]}>－</Text>
+            </TouchableOpacity>
             <View style={styles.dateBadge}><TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" /></View>
-            <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustDate(1)}><Text style={styles.adjustBtnText}>＋</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
+                <Text style={[styles.adjustBtnText, { color: theme }]}>＋</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.dateBadge}><TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" /></View>
-          <TouchableOpacity style={styles.currentBtn} onPress={handleSetCurrentTime}><Text style={styles.currentBtnText}>現在</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
+              <Text style={styles.currentBtnText}>現在</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.tabContainer}>
@@ -325,15 +334,17 @@ export default function DetailedRecordScreen() {
         {activeTab === 'input' ? (
           <View>
             <View style={styles.row}>
-              <View style={styles.half}><Text style={styles.label}>回数: <Text style={styles.highlight}>{count}</Text></Text><WorkoutPicker data={NUMBER_DATA} currentVal={count} onSelect={setCount} pickerRef={countRef} /></View>
-              <View style={styles.half}><Text style={styles.label}>セット: <Text style={styles.highlight}>{sets}</Text></Text><WorkoutPicker data={SET_DATA} currentVal={sets} onSelect={setSets} pickerRef={setsRef} /></View>
+              <View style={styles.half}><Text style={styles.label}>回数: <Text style={[styles.highlight, { color: theme }]}>{count}</Text></Text>
+              <WorkoutPicker data={NUMBER_DATA} currentVal={count} onSelect={setCount} pickerRef={countRef} theme={theme} /></View>
+              <View style={styles.half}><Text style={styles.label}>セット: <Text style={[styles.highlight, { color: theme }]}>{sets}</Text></Text>
+              <WorkoutPicker data={SET_DATA} currentVal={sets} onSelect={setSets} pickerRef={setsRef} theme={theme} /></View>
             </View>
             <View style={styles.timeSection}>
-              <Text style={styles.label}>時間: <Text style={styles.highlight}>{mins}分 {secs}秒</Text></Text>
+              <Text style={styles.label}>時間: <Text style={[styles.highlight, { color: theme }]}>{mins}分 {secs}秒</Text></Text>
               <View style={styles.timePickers}>
-                <View style={{flex:1}}><WorkoutPicker data={NUMBER_DATA} currentVal={mins} onSelect={setMins} pickerRef={minsRef} /></View>
+                <View style={{flex:1}}><WorkoutPicker data={NUMBER_DATA} currentVal={mins} onSelect={setMins} pickerRef={minsRef} theme={theme} /></View>
                 <Text style={styles.timeSeparator}>:</Text>
-                <View style={{flex:1}}><WorkoutPicker data={SEC_DATA} currentVal={secs} onSelect={setSecs} pickerRef={secsRef} /></View>
+                <View style={{flex:1}}><WorkoutPicker data={SEC_DATA} currentVal={secs} onSelect={setSecs} pickerRef={secsRef} theme={theme} /></View>
               </View>
             </View>
           </View>
@@ -348,19 +359,19 @@ export default function DetailedRecordScreen() {
                 <Stepper label="" value={restSec} onUpdate={setRestSec} unit="秒" max={59} />
                 <View style={styles.divider} />
                 <Stepper label="③ 周回数" value={rounds} onUpdate={setRounds} min={1} />
-                <TouchableOpacity style={styles.startBtn} onPress={startTimer}><Text style={styles.startBtnText}>スタート 🚀</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.startBtn, { backgroundColor: theme }]} onPress={startTimer}><Text style={styles.startBtnText}>スタート 🚀</Text></TouchableOpacity>
               </View>
             ) : (
               <View style={styles.timerDisplayContainer}>
-                <Text style={styles.phaseText}>{phase === 'WORK' ? '🔥 TRAINING' : phase === 'REST' ? '☕ REST' : '✨ FINISHED'}</Text>
+                <Text style={[styles.phaseText, { color: theme }]}>{phase === 'WORK' ? '🔥 TRAINING' : phase === 'REST' ? '☕ REST' : '✨ FINISHED'}</Text>
                 <Text style={styles.timeLeftText}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</Text>
                 <Text style={styles.roundText}>{currentRound} / {rounds} Rounds</Text>
                 <View style={styles.controlRow}>
-                  {phase !== 'FINISH' && <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : COLORS.primaryGreen}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "再開"}</Text></TouchableOpacity>}
+                  {phase !== 'FINISH' && <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : theme}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "再開"}</Text></TouchableOpacity>}
                   <TouchableOpacity style={[styles.controlBtn, {backgroundColor: COLORS.grayBackground}]} onPress={() => { setIsRunning(false); setPhase('IDLE'); }}><Text style={[styles.controlBtnText, {color: COLORS.text}]}>リセット</Text></TouchableOpacity>
                 </View>
                 {!isRunning && (phase === 'FINISH' || timeLeft < (workMin * 60 + workSec)) && (
-                   <TouchableOpacity style={styles.inlineSaveBtn} onPress={() => validateAndSave(Math.ceil(((workMin * 60 + workSec) + (restMin * 60 + restSec)) * rounds / 60))}>
+                   <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(Math.ceil(((workMin * 60 + workSec) + (restMin * 60 + restSec)) * rounds / 60))}>
                      <Text style={styles.saveBtnText}>休憩込みの総時間を記録 🏁</Text>
                    </TouchableOpacity>
                 )}
@@ -372,10 +383,10 @@ export default function DetailedRecordScreen() {
             <View style={styles.timerDisplayContainer}>
               <Text style={styles.timeLeftText}>{Math.floor(swTime / 60).toString().padStart(2, '0')}:{(swTime % 60).toString().padStart(2, '0')}</Text>
               <View style={styles.controlRow}>
-                <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : COLORS.primaryGreen}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "計測スタート"}</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : theme}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "計測スタート"}</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.controlBtn, {backgroundColor: COLORS.grayBackground}]} onPress={() => { setIsRunning(false); setSwTime(0); }}><Text style={[styles.controlBtnText, {color: COLORS.text}]}>リセット</Text></TouchableOpacity>
               </View>
-              {!isRunning && swTime > 0 && <TouchableOpacity style={styles.inlineSaveBtn} onPress={() => validateAndSave(Math.max(1, Math.ceil(swTime / 60)))}><Text style={styles.saveBtnText}>この記録を保存する 🏁</Text></TouchableOpacity>}
+              {!isRunning && swTime > 0 && <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(Math.max(1, Math.ceil(swTime / 60)))}><Text style={styles.saveBtnText}>この記録を保存する 🏁</Text></TouchableOpacity>}
             </View>
           </View>
         )}

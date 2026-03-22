@@ -17,7 +17,6 @@ LocaleConfig.locales['jp'] = {
 LocaleConfig.defaultLocale = 'jp';
 
 const COLORS = {
-  primaryGreen: '#A4C639',
   background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
@@ -33,19 +32,22 @@ export default function HomeScreen() {
   const [streakDays, setStreakDays] = useState(workoutData.streakDays);
   const [totalMinutes, setTotalMinutes] = useState(workoutData.totalMinutes);
   const [markedDates, setMarkedDates] = useState(workoutData.markedDates);
-  
-  // ★ 称号管理：globalState の「装備中（equippedBadge）」を直接参照
   const [currentBadge, setCurrentBadge] = useState(workoutData.equippedBadge);
+
+  // ★ 1. テーマカラーを管理するState
+  const [theme, setTheme] = useState(workoutData.themeColor);
 
   // ★ 画面にフォーカスが当たった（戻ってきた）時の更新処理
   useFocusEffect(
     useCallback(() => {
       setStreakDays(workoutData.streakDays);
       setTotalMinutes(workoutData.totalMinutes);
+      // ★ 2. 脳みそ側で色を塗り替えた「markedDates」を読み込み直す
       setMarkedDates({ ...workoutData.markedDates });
-      
-      // ★ ここが肝心：設定画面で変更された「装備中の称号」を読み直す
       setCurrentBadge(workoutData.equippedBadge);
+      
+      // ★ 3. 脳みそから「最新のテーマ色」を読み直してStateを更新！
+      setTheme(workoutData.themeColor);
     }, [])
   );
 
@@ -69,14 +71,15 @@ export default function HomeScreen() {
 
         {/* AIトレーナー相談カード */}
         <TouchableOpacity 
-          style={styles.aiCard} 
+          // ★ 4. 枠線の色をテーマカラーに！
+          style={[styles.aiCard, { borderColor: theme }]} 
           onPress={() => router.push('/ai')} 
           activeOpacity={0.7}
         >
           <View style={styles.aiHeader}>
-            <Text style={styles.aiName}>🤖 AIトレーナー</Text>
+            {/* ★ 5. テキストの色をテーマカラーに！ */}
+            <Text style={[styles.aiName, { color: theme }]}>🤖 AIトレーナー</Text>
             
-            {/* ★ 称号表示：設定画面で選んだものがここに表示されます */}
             <View style={styles.badgeContainer}>
               <Text style={styles.badgeText}>{currentBadge}</Text>
             </View>
@@ -95,7 +98,8 @@ export default function HomeScreen() {
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>連続記録</Text>
-            <Text style={styles.summaryValue}>
+            {/* ★ 6. 連続記録の数字をテーマカラーに！ */}
+            <Text style={[styles.summaryValue, { color: theme }]}>
                 {streakDays}
                 <Text style={styles.summaryUnit}> 日</Text>
             </Text>
@@ -105,11 +109,15 @@ export default function HomeScreen() {
         {/* カレンダー表示 */}
         <View style={styles.calendarContainer}>
           <Calendar
+            // ★ 7. 【重要】keyにthemeを入れることで、色が変わった時にカレンダーを強制的に作り直させます
+            key={theme} 
             markedDates={markedDates}
             theme={{
-              todayTextColor: COLORS.primaryGreen,
-              arrowColor: COLORS.primaryGreen,
-              selectedDayBackgroundColor: COLORS.primaryGreen,
+              // ★ 8. カレンダー内の色もすべてテーマカラーに連動！
+              todayTextColor: theme,
+              arrowColor: theme,
+              selectedDayBackgroundColor: theme,
+              dotColor: theme,
               textDayFontWeight: '500',
               textMonthFontWeight: 'bold',
               textDayHeaderFontWeight: 'bold',
@@ -125,14 +133,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text, marginBottom: 15 },
+  pageTitle: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 15 },
   aiCard: { 
-    backgroundColor: COLORS.aiBackground, 
+    backgroundColor: '#E8F5E9', 
     borderRadius: 15, 
     padding: 15, 
     marginBottom: 20, 
-    borderWidth: 1, 
-    borderColor: '#C8E6C9', 
+    borderWidth: 2, 
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -140,7 +147,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   aiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  aiName: { fontSize: 16, fontWeight: 'bold', color: COLORS.primaryGreen },
+  aiName: { fontSize: 16, fontWeight: 'bold' },
   badgeContainer: { 
     backgroundColor: COLORS.white, 
     paddingHorizontal: 10, 
@@ -150,7 +157,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.badgeGold 
   },
   badgeText: { fontSize: 12, fontWeight: 'bold', color: '#D4AF37' },
-  aiMessage: { fontSize: 15, color: COLORS.text, lineHeight: 22, fontWeight: '500' },
+  aiMessage: { fontSize: 15, color: '#333', lineHeight: 22, fontWeight: '500' },
   summaryContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
   summaryCard: { 
     backgroundColor: COLORS.white, 
@@ -165,8 +172,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   summaryLabel: { fontSize: 14, color: COLORS.grayText, fontWeight: '600', marginBottom: 5 },
-  summaryValue: { fontSize: 32, fontWeight: 'bold', color: COLORS.text },
-  summaryUnit: { fontSize: 16, fontWeight: 'normal' },
+  summaryValue: { fontSize: 32, fontWeight: 'bold', color: '#333' },
+  summaryUnit: { fontSize: 16, fontWeight: 'normal', color: '#757575' },
   calendarContainer: { 
     backgroundColor: COLORS.white, 
     borderRadius: 15, 
