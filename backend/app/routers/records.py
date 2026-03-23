@@ -35,16 +35,22 @@ def format_record(record: dict):
     if created_at_iso:
         date_str = created_at_iso[:10]
 
+    count_value = record.get("count")
+    duration_value = record.get("duration")
+    memo_value = record.get("memo")
+    record_type = record.get("type", "normal")
+
     return {
-        "recordId": record.get("recordId"),
-        "userId": record.get("userId"),
-        "menuName": record.get("menuName"),
-        "count": record.get("count", 0),
-        "duration": record.get("duration", 0),
-        "memo": record.get("memo"),
+        "recordId": record.get("recordId", ""),
+        "userId": record.get("userId", ""),
+        "menuName": record.get("menuName", ""),
+        "count": int(count_value or 0),
+        "duration": float(duration_value or 0),
+        "memo": memo_value if memo_value is not None else "",
         "createdAt": created_at_iso,
         "date": date_str,
-        "minutes": record.get("duration", 0),
+        "minutes": float(duration_value or 0),
+        "type": record_type,
     }
 
 
@@ -58,6 +64,7 @@ def create_record(record: RecordCreate):
         "count": data["count"],
         "duration": data.get("duration"),
         "memo": data.get("memo"),
+        "type": "normal",
         "createdAt": datetime.utcnow()
     }
 
@@ -104,5 +111,6 @@ def get_records(user_id: str):
 
     return {
         "userId": user_id,
+        "totalRecords": len(formatted),
         "records": formatted
     }
