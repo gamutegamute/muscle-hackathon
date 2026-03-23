@@ -107,7 +107,7 @@ export default function GraphScreen() {
     weeks.push(days.slice(i * 7, i * 7 + 7));
   }
 
-  // 🔥 メモリ自動調整
+  // メモリ調整
   const getNiceStep = (max: number) => {
     const roughStep = max / 5;
     const pow = Math.pow(10, Math.floor(Math.log10(roughStep)));
@@ -135,7 +135,6 @@ export default function GraphScreen() {
     gridLines.push(i);
   }
 
-  // 🔥 初期で今週表示
   useEffect(() => {
     setTimeout(() => {
       scrollRef.current?.scrollTo({
@@ -153,7 +152,6 @@ export default function GraphScreen() {
           トレーニング分析
         </Text>
 
-        {/* 累計時間 */}
         <View style={styles.summaryRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>累計時間</Text>
@@ -180,7 +178,6 @@ export default function GraphScreen() {
               <View style={styles.chartCard}>
                 <View style={styles.chartBottomArea}>
 
-                  {/* メモリ */}
                   <View style={styles.gridContainer}>
                     {gridLines.map((g, i) => {
                       const y =
@@ -197,7 +194,6 @@ export default function GraphScreen() {
                     })}
                   </View>
 
-                  {/* グラフ */}
                   <View style={styles.barChartContainer}>
                     {week.map((item, index) => {
                       const value = item.minutes ?? 0;
@@ -250,7 +246,6 @@ export default function GraphScreen() {
           ))}
         </ScrollView>
 
-        {/* コンディション */}
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <Ionicons name="medal-outline" size={24} color={theme} />
@@ -295,7 +290,12 @@ const styles = StyleSheet.create({
 
   chartTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
 
-  chartCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 10 },
+  chartCard: { 
+    backgroundColor: COLORS.white, 
+    borderRadius: 20, 
+    padding: 20,
+    height: 215,
+ },
 
   chartBottomArea: { height: GRAPH_HEIGHT + 40 },
 
