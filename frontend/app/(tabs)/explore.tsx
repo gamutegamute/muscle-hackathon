@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   Alert
 } from 'react-native';
 import { workoutData } from '../globalState';
+import { syncWorkoutData } from '@/lib/workout-sync';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -28,6 +30,7 @@ const GRAPH_HEIGHT = 160;
 const OFFSET = 25;
 
 export default function GraphScreen() {
+  const router = useRouter();
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -54,9 +57,18 @@ export default function GraphScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setTotalMinutes(workoutData.totalMinutes || 0);
-      setStreakDays(workoutData.streakDays || 0);
-      setTodayStr(getLocalDate(new Date()));
+      let active = true;
+      syncWorkoutData().catch(() => {
+        // フォールバックでローカル値を利用
+      }).finally(() => {
+        if (!active) return;
+        setTotalMinutes(workoutData.totalMinutes || 0);
+        setStreakDays(workoutData.streakDays || 0);
+        setTodayStr(getLocalDate(new Date()));
+      });
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
@@ -68,39 +80,30 @@ export default function GraphScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const records = workoutData.records || [];
+  const recordMap: Record<string, number> = {};
+  workoutData.records.forEach((record) => {
+    recordMap[record.date] = (recordMap[record.date] || 0) + (record.minutes || 0);
+  });
 
-  const recordMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    records.forEach(r => {
-      map[r.date] = (map[r.date] || 0) + (r.minutes || 0);
+  const days = [];
+  const today = new Date();
+  const day = today.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+
+  const start = new Date(today);
+  start.setDate(today.getDate() + mondayOffset - 21);
+
+  for (let i = 0; i < 28; i++) {
+    const currentDate = new Date(start);
+    currentDate.setDate(start.getDate() + i);
+
+    const key = getLocalDate(currentDate);
+
+    days.push({
+      date: key,
+      minutes: recordMap[key] ?? 0,
     });
-    return map;
-  }, [records]);
-
-  const days = useMemo(() => {
-    const arr = [];
-    const today = new Date();
-    const day = today.getDay();
-    const mondayOffset = (day === 0 ? -6 : 1 - day);
-
-    const start = new Date(today);
-    start.setDate(today.getDate() + mondayOffset - 21);
-
-    for (let i = 0; i < 28; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-
-      const key = getLocalDate(d);
-
-      arr.push({
-        date: key,
-        minutes: recordMap[key] ?? 0
-      });
-    }
-
-    return arr;
-  }, [recordMap]);
+  }
 
   const weeks = [];
   for (let i = 0; i < 4; i++) {
@@ -122,11 +125,8 @@ export default function GraphScreen() {
     return niceDigit * pow;
   };
 
-  const MAX_VALUE = useMemo(() => {
-    const max = Math.max(...days.map(d => d.minutes), 10);
-    const step = getNiceStep(max);
-    return Math.ceil(max / step) * step;
-  }, [days]);
+  const max = Math.max(...days.map(d => d.minutes), 10);
+  const MAX_VALUE = Math.ceil(max / getNiceStep(max)) * getNiceStep(max);
 
   const STEP = getNiceStep(MAX_VALUE);
 
@@ -263,6 +263,25 @@ export default function GraphScreen() {
           </View>
         </View>
 
+        <TouchableOpacity
+          style={styles.historyCard}
+          activeOpacity={0.8}
+          onPress={() => router.push('/records_history')}
+        >
+          <View style={styles.infoHeader}>
+            <Ionicons name="list-outline" size={24} color={theme} />
+            <Text style={[styles.infoTitle, { color: theme }]}>
+              記録一覧
+            </Text>
+          </View>
+          <View style={styles.historyLinkRow}>
+            <Text style={styles.historyLinkText}>
+              過去の記録を一覧で見て、編集できます
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color={theme} />
+          </View>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -378,5 +397,25 @@ const styles = StyleSheet.create({
 
   highlight: {
     fontWeight: 'bold',
+  },
+
+  historyCard: {
+    marginTop: 20,
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+  },
+
+  historyLinkRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+
+  historyLinkText: {
+    flex: 1,
+    color: COLORS.grayText,
+    fontSize: 13,
   },
 });

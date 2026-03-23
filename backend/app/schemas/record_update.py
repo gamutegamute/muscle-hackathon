@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import Field
@@ -13,3 +14,4 @@ class RecordUpdate(CamelModel):
     rounds: Optional[int] = Field(default=None, ge=1, le=1000)
     memo: Optional[str] = Field(default=None, max_length=1000)
     type: Optional[str] = Field(default=None, pattern="^(normal|timer)$")
+    createdAt: Optional[datetime] = None

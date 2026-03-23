@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker'; // ★ expo-image-pickerを追加
 import { workoutData } from '../globalState';
+import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
 
 const COLORS = {
     background: '#F5F5F5',
@@ -224,14 +225,24 @@ export default function ProfileScreen() {
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>現在のステータス</Text>
                         <TouchableOpacity onPress={() => {
+                            const nextEditing = !isEditing;
                             if (isEditing) {
                                 workoutData.setUserProfile({
+                                    name: profile.name,
                                     height: profile.height,
                                     weight: profile.weight,
                                     bodyFat: profile.bodyFat,
                                 });
+                                saveProfileToBackend({
+                                    name: profile.name,
+                                    height: profile.height,
+                                    weight: profile.weight,
+                                    bodyFat: profile.bodyFat,
+                                })
+                                  .then(() => syncWorkoutData())
+                                  .catch(() => {});
                             }
-                            setIsEditing(!isEditing);
+                            setIsEditing(nextEditing);
                         }}>
                             <Text style={[styles.editButtonText, { color: theme }]}>
                                 {isEditing ? '保存' : '編集'}

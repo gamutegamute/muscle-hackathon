@@ -48,7 +48,7 @@ def create_record(record: RecordCreate):
         "rounds": data.get("rounds"),
         "memo": data.get("memo"),
         "type": "normal",
-        "createdAt": datetime.utcnow(),
+        "createdAt": data.get("createdAt") or datetime.utcnow(),
     }
 
     saved_data = save_record(record_data)

@@ -2,6 +2,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { 
+  Alert,
   SafeAreaView, 
   ScrollView, 
   StyleSheet, 
@@ -13,6 +14,7 @@ import {
   Platform // ★ 追加
 } from 'react-native';
 import { workoutData } from './globalState'; // パスはご自身の環境に合わせてください
+import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -31,17 +33,29 @@ export default function ProfileSettingsScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // ★ 追加：入力されたデータをglobalStateに保存してからホームへ移動する処理
-  const handleSave = () => {
-    workoutData.setUserProfile({
-      name: name || '筋肉太郎', // 空欄の場合はデフォルト値
+  const handleSave = async () => {
+    const profile = {
+      name: name || '筋肉太郎',
       age: age || '20',
       height: height || '170',
       weight: weight || '65.5',
       bodyFat: bodyFat || '18.5',
-    });
-    router.replace('/(tabs)/home');
+    };
+
+    try {
+      setIsSaving(true);
+      workoutData.setUserProfile(profile);
+      await saveProfileToBackend(profile);
+      await syncWorkoutData();
+      router.replace('/(tabs)/home');
+    } catch {
+      Alert.alert('保存エラー', 'プロフィールの保存に失敗しました。バックエンド起動やAPI接続先を確認してください。');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -94,8 +108,8 @@ export default function ProfileSettingsScreen() {
           </View>
 
           {/* ★ 修正：onPressを handleSave に変更 */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>保存して始める</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+            <Text style={styles.saveButtonText}>{isSaving ? '保存中...' : '保存して始める'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

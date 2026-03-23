@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { workoutData } from '../globalState';
+import { saveRecordToBackend, syncWorkoutData } from '@/lib/workout-sync';
 
 const COLORS = {
   background: '#F5F5F5',
@@ -123,6 +124,7 @@ const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme
     </View>
   );
 });
+WorkoutPicker.displayName = 'WorkoutPicker';
 
 // --- メイン画面 ---
 export default function DetailedRecordScreen() {
@@ -130,6 +132,16 @@ export default function DetailedRecordScreen() {
   const params = useLocalSearchParams();
   const [theme, setTheme] = useState(workoutData.themeColor);
   const scrollRef = useRef<ScrollView>(null);
+  const recordId = typeof params.recordId === 'string' ? params.recordId : '';
+  const isEditMode = typeof params.mode === 'string' && params.mode === 'edit';
+  const paramMenu = typeof params.menu === 'string' ? params.menu : '';
+  const paramCount = typeof params.count === 'string' ? params.count : '';
+  const paramSets = typeof params.sets === 'string' ? params.sets : '';
+  const paramMins = typeof params.mins === 'string' ? params.mins : '';
+  const paramSecs = typeof params.secs === 'string' ? params.secs : '';
+  const paramMemo = typeof params.memo === 'string' ? params.memo : '';
+  const paramDateStr = typeof params.dateStr === 'string' ? params.dateStr : '';
+  const paramTimeStr = typeof params.timeStr === 'string' ? params.timeStr : '';
 
   useFocusEffect(
     useCallback(() => {
@@ -172,6 +184,7 @@ export default function DetailedRecordScreen() {
   const secsRef = useRef<FlatList>(null);
   const timerRef = useRef<any>(null);
   const swRef = useRef<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSetCurrentTime = () => {
     setDateStr(getToday());
@@ -194,17 +207,24 @@ export default function DetailedRecordScreen() {
           setDateStr(`${y}/${m}/${d}`);
         }
       }
-    } catch (e) { console.log("日付調整失敗"); }
+    } catch { console.log("日付調整失敗"); }
   };
 
   useEffect(() => {
-    if (params.menu) {
-      const c = Number(params.count) || 10;
-      const s = Number(params.sets) || 3;
-      const m = Number(params.mins) || 0;
-      const sec = Number(params.secs) || 30;
+    if (paramMenu) {
+      const c = Number(paramCount) || 10;
+      const s = Number(paramSets) || 3;
+      const m = Number(paramMins) || 0;
+      const sec = Number(paramSecs) || 30;
 
-      setMenu(params.menu as string);
+      setMenu(paramMenu);
+      setMemo(paramMemo);
+      if (paramDateStr) {
+        setDateStr(paramDateStr);
+      }
+      if (paramTimeStr) {
+        setTimeStr(paramTimeStr);
+      }
       setCount(c);
       setSets(s);
       setRounds(s);
@@ -220,17 +240,36 @@ export default function DetailedRecordScreen() {
         secsRef.current?.scrollToIndex({ index: sec, animated: true });
       }, 300);
     }
-  }, [params.menu]);
+  }, [paramCount, paramDateStr, paramMemo, paramMenu, paramMins, paramSecs, paramSets, paramTimeStr]);
 
-  const validateAndSave = (finalMins: number) => {
+  const validateAndSave = async (finalMins: number) => {
     if (!menu.trim()) {
       Alert.alert('メニューが未入力です','AIに相談してみますか？',
         [{ text: '自分で入力する', style: 'cancel' }, { text: 'AIに相談する 🤖', onPress: () => router.push('/ai') }]
       );
       return;
     }
-    workoutData.addWorkout(finalMins || 1, dateStr, menu, memo);
-    router.push('/record_complete');
+
+    try {
+      setIsSaving(true);
+      await syncWorkoutData().catch(() => {});
+      await saveRecordToBackend({
+        recordId: recordId || undefined,
+        dateStr,
+        timeStr,
+        menu: menu.trim(),
+        memo,
+        count,
+        minutes: finalMins || 1,
+        interval: restMin * 60 + restSec,
+        rounds: activeTab === 'input' ? sets : rounds,
+      });
+      router.push('/record_complete');
+    } catch {
+      Alert.alert('保存エラー', '記録の保存に失敗しました。バックエンドの起動や接続先を確認してください。');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const startTimer = () => {
@@ -260,7 +299,7 @@ export default function DetailedRecordScreen() {
       }
     }
     return () => clearInterval(timerRef.current);
-  }, [isRunning, timeLeft, phase, activeTab]);
+  }, [activeTab, currentRound, isRunning, phase, restMin, restSec, rounds, timeLeft, workMin, workSec]);
 
   useEffect(() => {
     if (isRunning && activeTab === 'stopwatch') {
@@ -280,8 +319,12 @@ export default function DetailedRecordScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>記録</Text>
           {activeTab === 'input' && (
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(mins + (secs > 0 ? 1 : 0))}>
-              <Text style={styles.saveBtnText}>保存</Text>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: theme, opacity: isSaving ? 0.7 : 1 }]}
+              onPress={() => validateAndSave(mins + (secs > 0 ? 1 : 0))}
+              disabled={isSaving}
+            >
+              <Text style={styles.saveBtnText}>{isSaving ? '保存中' : isEditMode ? '更新' : '保存'}</Text>
             </TouchableOpacity>
           )}
         </View>

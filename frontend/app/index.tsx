@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router'; //追加：移動用ツールインポート
 import React, { useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { workoutData } from './globalState';
 
 export default function App() {
   const [email, setEmail] = useState('');

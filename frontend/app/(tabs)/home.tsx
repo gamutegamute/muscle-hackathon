@@ -1,10 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { workoutData } from '../globalState';
+import { syncWorkoutData } from '@/lib/workout-sync';
 
 // カレンダー日本語化
 LocaleConfig.locales['jp'] = {
@@ -36,29 +37,57 @@ export default function HomeScreen() {
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [isHoursFormat, setIsHoursFormat] = useState(false);
   const [todayRecords, setTodayRecords] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 画面に戻ってきた時のデータ更新処理
   useFocusEffect(
     useCallback(() => {
-      // 1. 基本データの同期
-      setStreakDays(workoutData.streakDays);
-      setTotalMinutes(workoutData.totalMinutes);
-      setMarkedDates({ ...workoutData.markedDates });
-      setCurrentBadge(workoutData.equippedBadge);
-      setTheme(workoutData.themeColor);
-      
-      // 2. スマホの現在時刻から今日の日付 (YYYY-MM-DD) を生成
+      let active = true;
+      syncWorkoutData().catch(() => {
+        // オフライン時はローカル状態をそのまま表示
+      }).finally(() => {
+        if (!active) return;
+        setStreakDays(workoutData.streakDays);
+        setTotalMinutes(workoutData.totalMinutes);
+        setMarkedDates({ ...workoutData.markedDates });
+        setCurrentBadge(workoutData.equippedBadge);
+        setTheme(workoutData.themeColor);
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+
+        const filtered = workoutData.records.filter((r) => r.date === todayStr);
+        setTodayRecords([...filtered]);
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await syncWorkoutData({ showAlert: true });
       const now = new Date();
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, '0');
       const d = String(now.getDate()).padStart(2, '0');
       const todayStr = `${y}-${m}-${d}`;
-      
-      // 3. 今日のレコードを最新状態で抽出
-      const filtered = workoutData.records.filter(r => r.date === todayStr);
-      setTodayRecords([...filtered]); 
-    }, [])
-  );
+      setTodayRecords(workoutData.records.filter((r) => r.date === todayStr));
+      setStreakDays(workoutData.streakDays);
+      setTotalMinutes(workoutData.totalMinutes);
+      setMarkedDates({ ...workoutData.markedDates });
+    } catch {
+      Alert.alert('更新エラー', '最新データの取得に失敗しました。');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // AI激励メッセージ生成
   const getAiMessage = (streak: number) => {
@@ -99,6 +128,7 @@ export default function HomeScreen() {
         style={{ backgroundColor: COLORS.background }} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
         <Text style={styles.pageTitle}>ホーム</Text>
 
@@ -169,7 +199,28 @@ export default function HomeScreen() {
               const actualMenuName = item.menu || item.title || item.workout || item.name || "トレーニング";
               
               return (
-                <View key={index} style={styles.recordItem}>
+                <TouchableOpacity
+                  key={item.recordId || index}
+                  style={styles.recordItem}
+                  activeOpacity={0.75}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(tabs)/kiroku',
+                      params: {
+                        recordId: item.recordId || '',
+                        menu: actualMenuName,
+                        count: String(item.count || 0),
+                        sets: String(item.rounds || 1),
+                        mins: String(Math.floor(item.durationSeconds / 60) || item.minutes || 0),
+                        secs: String(item.durationSeconds % 60 || 0),
+                        memo: item.memo || '',
+                        dateStr: item.date?.replace(/-/g, '/') || '',
+                        timeStr: item.createdAt ? new Date(item.createdAt).toTimeString().slice(0, 5) : '',
+                        mode: 'edit',
+                      },
+                    })
+                  }
+                >
                   <View style={[styles.recordAccent, { backgroundColor: theme }]} />
                   <View style={styles.recordInfo}>
                     <View style={styles.recordTopRow}>
@@ -183,7 +234,7 @@ export default function HomeScreen() {
                       </View>
                     ) : null}
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           ) : (
