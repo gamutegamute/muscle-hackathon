@@ -1,27 +1,33 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# routers 一括インポート
-from app.routers import profile, records, ai, home, timer
+from app.routers import ai, home, profile, records, timer
 
-app = FastAPI()
+app = FastAPI(
+    title="Muscle Hackathon API",
+    version="0.1.0",
+    description="Backend API for workout profile, records, summaries, timers, and coaching hints.",
+)
 
-# CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 開発中は全部許可でOK
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ルート確認
+
 @app.get("/")
 def read_root():
     return {"message": "Muscle Hackathon API is running!"}
 
 
-# --- ルーター登録 ---
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 app.include_router(profile.router)
 app.include_router(records.router)
 app.include_router(ai.router)
