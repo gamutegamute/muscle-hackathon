@@ -1,3 +1,7 @@
+import { LogBox } from 'react-native';
+
+// すべての黄色い警告メッセージを画面に出さないようにする魔法
+LogBox.ignoreAllLogs(true);
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
