@@ -1,23 +1,32 @@
 from fastapi import APIRouter
 
-from app.schemas.ai import AdviceRequest
+from app.firebase import db
+from app.schemas.ai import AdviceRequest, AdviceResponse
+from app.services.ai_coach import build_ai_advice
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-@router.post("/advice")
-def get_advice(request: AdviceRequest):
-    effort_hint = "まずはフォームを崩さず続けていこう。"
-    if request.count and request.count >= 20:
-        effort_hint = "かなり追い込めているので、今日はしっかり休息も意識しよう。"
-    elif request.duration and request.duration >= 1800:
-        effort_hint = "長めに取り組めていて良い流れ。水分補給も忘れずに。"
+def get_user(user_id: str):
+    doc = db.collection("users").document(user_id).get()
+    return doc.to_dict() if doc.exists else None
 
-    return {
-        "message": f"{request.name}さん、今日の{request.menuName}もお疲れさま！{effort_hint}",
-        "summary": {
-            "menuName": request.menuName,
-            "count": request.count,
-            "duration": request.duration,
-        },
-    }
+
+def get_user_records(user_id: str):
+    docs = db.collection("records").where("userId", "==", user_id).stream()
+    return [doc.to_dict() for doc in docs]
+
+
+@router.post("/advice", response_model=AdviceResponse)
+def get_advice(request: AdviceRequest):
+    profile = get_user(request.userId) or {}
+    records = get_user_records(request.userId)
+    user_name = profile.get("name") or "あなた"
+
+    return build_ai_advice(
+        user_name=user_name,
+        level=request.level,
+        topic=request.topic,
+        message=request.message,
+        records=records,
+    )

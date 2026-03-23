@@ -38,6 +38,25 @@ export type ApiSummary = {
   menuSummary: Array<{ menuName: string; totalCount: number }>;
 };
 
+export type ApiAdvice = {
+  message: string;
+  reason: string;
+  recommendation: {
+    menuName: string;
+    count: number;
+    sets: number;
+    mins: number;
+    secs: number;
+  };
+  summary: {
+    streakDays: number;
+    totalMinutes: number;
+    todayRecords: number;
+    todayTotalMinutes: number;
+    recentMenus: string[];
+  };
+};
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -149,16 +168,13 @@ export async function updateRecord(
 }
 
 export async function getAdvice(body: {
-  name: string;
-  menuName: string;
-  count?: number;
-  duration?: number;
+  userId: string;
+  topic: string;
+  level?: string | null;
+  message?: string;
 }) {
-  return request<{ message: string; summary: { menuName: string; count?: number; duration?: number } }>(
-    '/ai/advice',
-    {
-      method: 'POST',
-      body,
-    },
-  );
+  return request<ApiAdvice>('/ai/advice', {
+    method: 'POST',
+    body,
+  });
 }
