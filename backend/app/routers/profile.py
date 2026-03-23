@@ -16,7 +16,13 @@ def get_user(user_id: str):
     return doc.to_dict() if doc.exists else None
 
 
+def update_user(user_id: str, data: dict):
+    db.collection("users").document(user_id).update(data)
+
+
 # --- API ---
+
+# 作成
 @router.post("")
 def create_profile(profile: ProfileCreate):
     data = profile.model_dump()
@@ -39,6 +45,7 @@ def create_profile(profile: ProfileCreate):
     }
 
 
+# 取得
 @router.get("/{user_id}")
 def get_profile(user_id: str):
     data = get_user(user_id)
@@ -49,4 +56,31 @@ def get_profile(user_id: str):
     return {
         **data,
         "userId": user_id
+    }
+
+
+# 更新（←今回追加）
+@router.patch("/{user_id}")
+def update_profile(user_id: str, profile: dict):
+    existing_user = get_user(user_id)
+
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    # 更新可能なフィールドだけ上書き
+    update_data = {}
+
+    for key in ["name", "age", "height", "weight", "bodyFat"]:
+        if key in profile:
+            update_data[key] = profile[key]
+
+    # 更新日時つける
+    update_data["updatedAt"] = datetime.utcnow()
+
+    update_user(user_id, update_data)
+
+    return {
+        "message": "profile updated",
+        "userId": user_id,
+        "updated": update_data
     }
