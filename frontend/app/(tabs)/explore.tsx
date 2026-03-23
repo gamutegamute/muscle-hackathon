@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -16,7 +16,6 @@ import { workoutData } from '../globalState';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const COLORS = {
-  primaryGreen: '#A4C639',
   background: '#F5F5F5',
   white: '#FFFFFF',
   text: '#333333',
@@ -26,15 +25,26 @@ const COLORS = {
 const DAYS = ['日','月','火','水','木','金','土'];
 
 const GRAPH_HEIGHT = 160;
-const MAX_VALUE = 60;
 const OFFSET = 25;
 
 export default function GraphScreen() {
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  // テーマカラー
+  const [theme, setTheme] = useState(workoutData.themeColor);
+
+  useEffect(() => {
+    const unsubscribe = workoutData.subscribeColor((color: string) => {
+      setTheme(color);
+    });
+    return () => unsubscribe && unsubscribe();
+  }, []);
+
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [streakDays, setStreakDays] = useState(0);
   const [todayStr, setTodayStr] = useState('');
 
-  // 🔥 ローカル日付関数（超重要）
   const getLocalDate = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -42,7 +52,6 @@ export default function GraphScreen() {
     return `${y}-${m}-${d}`;
   };
 
-  // 🔥 画面フォーカス時更新
   useFocusEffect(
     useCallback(() => {
       setTotalMinutes(workoutData.totalMinutes || 0);
@@ -51,35 +60,24 @@ export default function GraphScreen() {
     }, [])
   );
 
-  // 🔥 日付変化を監視（0時対応）
   useEffect(() => {
     const interval = setInterval(() => {
       const now = getLocalDate(new Date());
-
-      setTodayStr(prev => {
-        if (prev !== now) {
-          return now;
-        }
-        return prev;
-      });
-    }, 60000); // 1分ごと
-
+      setTodayStr(prev => (prev !== now ? now : prev));
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
   const records = workoutData.records || [];
 
-  // 🔥 日付→分
   const recordMap = useMemo(() => {
     const map: Record<string, number> = {};
     records.forEach(r => {
-      const key = r.date;
-      map[key] = (map[key] || 0) + (r.minutes || 0);
+      map[r.date] = (map[r.date] || 0) + (r.minutes || 0);
     });
     return map;
   }, [records]);
 
-  // 🔥 28日生成（ローカル時間）
   const days = useMemo(() => {
     const arr = [];
     const today = new Date();
@@ -109,31 +107,73 @@ export default function GraphScreen() {
     weeks.push(days.slice(i * 7, i * 7 + 7));
   }
 
+  // 🔥 メモリ自動調整
+  const getNiceStep = (max: number) => {
+    const roughStep = max / 5;
+    const pow = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const digit = roughStep / pow;
+
+    let niceDigit;
+    if (digit < 1.5) niceDigit = 1;
+    else if (digit < 3) niceDigit = 2;
+    else if (digit < 7) niceDigit = 5;
+    else niceDigit = 10;
+
+    return niceDigit * pow;
+  };
+
+  const MAX_VALUE = useMemo(() => {
+    const max = Math.max(...days.map(d => d.minutes), 10);
+    const step = getNiceStep(max);
+    return Math.ceil(max / step) * step;
+  }, [days]);
+
+  const STEP = getNiceStep(MAX_VALUE);
+
   const gridLines = [];
-  for (let i = 0; i <= MAX_VALUE; i += 10) {
+  for (let i = 0; i <= MAX_VALUE; i += STEP) {
     gridLines.push(i);
   }
+
+  // 🔥 初期で今週表示
+  useEffect(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        x: (SCREEN_WIDTH - 40) * 3,
+        animated: false
+      });
+    }, 100);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        <Text style={styles.pageTitle}>トレーニング分析</Text>
+        <Text style={[styles.pageTitle, { color: theme }]}>
+          トレーニング分析
+        </Text>
 
-        {/* 累計 */}
+        {/* 累計時間 */}
         <View style={styles.summaryRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>累計時間</Text>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: theme }]}>
               {totalMinutes}
               <Text style={styles.statLabel}> 分</Text>
             </Text>
           </View>
         </View>
 
-        <Text style={styles.chartTitle}>週間アクティビティ</Text>
+        <Text style={[styles.chartTitle, { color: theme }]}>
+          週間アクティビティ
+        </Text>
 
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+        >
           {weeks.map((week, wIndex) => (
             <View key={wIndex} style={{ width: SCREEN_WIDTH - 40 }}>
               
@@ -144,13 +184,13 @@ export default function GraphScreen() {
                   <View style={styles.gridContainer}>
                     {gridLines.map((g, i) => {
                       const y =
-                        GRAPH_HEIGHT - (g / MAX_VALUE) * GRAPH_HEIGHT - OFFSET;
+                        GRAPH_HEIGHT - (g / MAX_VALUE) * GRAPH_HEIGHT;
 
                       return (
                         <View key={i}>
                           <View style={[styles.gridLine, { top: y }]} />
                           <Text style={[styles.gridText, { top: y - 6 }]}>
-                            {g}
+                            {Math.round(g)}
                           </Text>
                         </View>
                       );
@@ -161,13 +201,8 @@ export default function GraphScreen() {
                   <View style={styles.barChartContainer}>
                     {week.map((item, index) => {
                       const value = item.minutes ?? 0;
-
-                      const height =
-                        (value / MAX_VALUE) * GRAPH_HEIGHT;
-
-                      // 🔥 今日判定（修正済み）
+                      const height = (value / MAX_VALUE) * GRAPH_HEIGHT;
                       const isToday = item.date === todayStr;
-
                       const dateObj = new Date(item.date);
 
                       return (
@@ -189,24 +224,18 @@ export default function GraphScreen() {
                                   height: Math.max(height, 2),
                                   backgroundColor: isToday
                                     ? '#FF6B6B'
-                                    : COLORS.primaryGreen,
+                                    : theme,
                                   opacity: value === 0 ? 0.3 : 1
                                 }
                               ]}
                             />
                           </View>
 
-                          <Text style={[
-                            styles.dateText,
-                            isToday && styles.todayText
-                          ]}>
+                          <Text style={[styles.dateText, isToday && styles.todayText]}>
                             {dateObj.getMonth()+1}/{dateObj.getDate()}
                           </Text>
 
-                          <Text style={[
-                            styles.dateText,
-                            isToday && styles.todayText
-                          ]}>
+                          <Text style={[styles.dateText, isToday && styles.todayText]}>
                             {DAYS[dateObj.getDay()]}
                           </Text>
 
@@ -221,15 +250,19 @@ export default function GraphScreen() {
           ))}
         </ScrollView>
 
-        {/* 連続 */}
+        {/* コンディション */}
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
-            <Ionicons name="medal-outline" size={24} color={COLORS.primaryGreen} />
-            <Text style={styles.infoTitle}>現在のコンディション</Text>
+            <Ionicons name="medal-outline" size={24} color={theme} />
+            <Text style={[styles.infoTitle, { color: theme }]}>
+              現在のコンディション
+            </Text>
           </View>
-          <View style={styles.infoContent}>
+          <View style={[styles.infoContent, { borderLeftColor: theme }]}>
             <Text style={styles.infoText}>
-              現在は <Text style={styles.highlight}>{streakDays}日連続</Text>でトレーニング中です。
+              現在は <Text style={[styles.highlight, { color: theme }]}>
+                {streakDays}日連続
+              </Text>でトレーニング中です。
               {"\n"}あと少しで実績解除です！
             </Text>
           </View>
@@ -242,87 +275,108 @@ export default function GraphScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 40 },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 25 },
+  scrollContent: { padding: 20 },
+
+  pageTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
 
   summaryRow: { marginBottom: 20 },
-  statCard: { backgroundColor: COLORS.white, width: '48%', padding: 20, borderRadius: 20 },
-  statLabel: { fontSize: 12, color: COLORS.grayText },
-  statValue: { fontSize: 32, fontWeight: 'bold' },
 
-  chartTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-
-  chartCard: {
+  statCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 25,
-    padding: 20,
-    height: 260
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
 
-  chartBottomArea: {
-    flex: 1,
-    justifyContent: 'flex-end'
-  },
+  statLabel: { color: COLORS.grayText },
 
-  barChartContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: GRAPH_HEIGHT
-  },
+  statValue: { fontSize: 28, fontWeight: 'bold' },
 
-  barWrapper: {
-    alignItems: 'center',
-    flex: 1
-  },
+  chartTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
 
-  barBackground: {
-    width: 12,
-    height: GRAPH_HEIGHT,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 6,
-    justifyContent: 'flex-end',
-    overflow: 'hidden'
-  },
+  chartCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 10 },
 
-  barActive: {
-    width: '100%',
-    borderRadius: 6
-  },
+  chartBottomArea: { height: GRAPH_HEIGHT + 40 },
 
-  dateText: {
-    fontSize: 10,
-    color: COLORS.grayText
-  },
-
-  todayText: {
-    color: '#FF6B6B',
-    fontWeight: 'bold'
-  },
-
-  gridContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: GRAPH_HEIGHT
-  },
+  gridContainer: { position: 'absolute', width: '100%', height: '100%' },
 
   gridLine: {
     position: 'absolute',
     width: '100%',
     height: 1,
-    backgroundColor: '#E5E5E5'
+    backgroundColor: '#ddd',
   },
 
   gridText: {
     position: 'absolute',
-    left: -10,
-    fontSize: 10,
-    color: COLORS.grayText
+    fontSize: 11,
+    color: COLORS.grayText,
   },
 
-  infoCard: { backgroundColor: COLORS.white, borderRadius: 20, padding: 20, marginTop: 20 },
-  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  infoTitle: { fontSize: 16, fontWeight: 'bold' },
-  infoContent: { borderLeftWidth: 3, borderLeftColor: COLORS.primaryGreen, paddingLeft: 15 },
-  infoText: { fontSize: 14 },
-  highlight: { fontWeight: 'bold', color: COLORS.primaryGreen },
+  barChartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: GRAPH_HEIGHT,
+    marginTop: OFFSET,
+  },
+
+  barWrapper: {
+    alignItems: 'center',
+    width: 24,
+  },
+
+  barBackground: {
+    width: 14,
+    height: GRAPH_HEIGHT,
+    backgroundColor: '#eee',
+    justifyContent: 'flex-end',
+    borderRadius: 6,
+  },
+
+  barActive: {
+    width: '100%',
+    borderRadius: 6,
+  },
+
+  dateText: {
+    fontSize: 10,
+    color: COLORS.grayText,
+  },
+
+  todayText: {
+    fontWeight: 'bold',
+  },
+
+  infoCard: {
+    marginTop: 20,
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+  },
+
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+
+  infoTitle: {
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+
+  infoContent: {
+    borderLeftWidth: 4,
+    paddingLeft: 10,
+  },
+
+  infoText: {
+    color: COLORS.text,
+  },
+
+  highlight: {
+    fontWeight: 'bold',
+  },
 });
