@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { workoutData } from './globalState'; // パスはご自身の環境に合わせてください
 import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
+import * as Notifications from 'expo-notifications';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -36,23 +37,46 @@ export default function ProfileSettingsScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // ★ 追加：入力されたデータをglobalStateに保存してからホームへ移動する処理
-  const handleSave = async () => {
-    const profile = {
-      name: name || '筋肉太郎',
-      age: age || '20',
-      height: height || '170',
-      weight: weight || '65.5',
-      bodyFat: bodyFat || '18.5',
-    };
-
+ const handleSave = async () => {
+    setIsSaving(true);
     try {
-      setIsSaving(true);
+      // 1. 通知の許可をもらってトークンを取得する
+      let token = "string"; // デフォルト値
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          // ※プロジェクトIDが必要な場合は getExpoPushTokenAsync({ projectId: 'your-id' }) となりますが、まずはこれで試しましょう
+          const expoToken = await Notifications.getExpoPushTokenAsync({
+            projectId: "f0c47ccd-8cea-4ddd-9c93-009e18c38962", 
+          });
+          token = expoToken.data;
+          console.log("📱 取得したトークン:", token);
+        }
+      } catch (e) {
+        console.log("トークン取得失敗（シミュレーターなど）:", e);
+      }
+
+      // 2. 送信データを作成
+      const profile = {
+        name: name || '筋肉太郎',
+        age: Number(age) || 20,
+        height: Number(height) || 170,
+        weight: Number(weight) || 65.5,
+        bodyFat: Number(bodyFat) || 18.5,
+        expoPushToken: token, 
+      };
+    
+      // 3. 状態保存とサーバー送信
       workoutData.setUserProfile(profile);
       await saveProfileToBackend(profile);
       await syncWorkoutData();
+
+      // 4. ホーム画面へ移動
       router.replace('/(tabs)/home');
-    } catch {
-      Alert.alert('保存エラー', 'プロフィールの保存に失敗しました。バックエンド起動やAPI接続先を確認してください。');
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('保存エラー', 'プロフィールの保存に失敗しました。バックエンドやネットワークを確認してください。');
     } finally {
       setIsSaving(false);
     }
