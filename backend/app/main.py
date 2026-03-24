@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import ai, home, profile, records, timer
-
+from app.routers import notifications
 app = FastAPI(
     title="Muscle Hackathon API",
     version="0.1.0",
@@ -33,3 +33,4 @@ app.include_router(records.router)
 app.include_router(ai.router)
 app.include_router(home.router)
 app.include_router(timer.router)
+app.include_router(notifications.router)
