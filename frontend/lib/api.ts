@@ -7,6 +7,7 @@ export type ApiProfile = {
   height?: number | null;
   weight?: number | null;
   bodyFat?: number | null;
+  expoPushToken?: string | null;
 };
 
 export type ApiRecord = {
