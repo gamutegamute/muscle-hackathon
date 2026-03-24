@@ -8,6 +8,16 @@ from app.services.records_summary import format_record
 router = APIRouter(prefix="/timers", tags=["timers"])
 
 
+def update_user_last_activity(user_id: str):
+    db.collection("users").document(user_id).set(
+        {
+            "lastActivity": firestore.SERVER_TIMESTAMP,
+            "lastActivityDate": firestore.SERVER_TIMESTAMP,
+        },
+        merge=True,
+    )
+
+
 @router.post("")
 def create_timer_record(record: RecordCreate):
     data = record.model_dump()
@@ -27,5 +37,6 @@ def create_timer_record(record: RecordCreate):
     doc_ref = db.collection("records").document()
     persisted_data = {**timer_data, "recordId": doc_ref.id}
     doc_ref.set(persisted_data)
+    update_user_last_activity(data["userId"])
 
     return {"message": "timer record saved", "data": format_record(persisted_data)}

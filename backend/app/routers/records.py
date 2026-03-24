@@ -1,4 +1,5 @@
 from datetime import datetime
+from firebase_admin import firestore
 
 from fastapi import APIRouter, HTTPException
 
@@ -35,6 +36,16 @@ def delete_record(record_id: str):
     db.collection("records").document(record_id).delete()
 
 
+def update_user_last_activity(user_id: str):
+    db.collection("users").document(user_id).set(
+        {
+            "lastActivity": firestore.SERVER_TIMESTAMP,
+            "lastActivityDate": firestore.SERVER_TIMESTAMP,
+        },
+        merge=True,
+    )
+
+
 @router.post("")
 def create_record(record: RecordCreate):
     data = record.model_dump()
@@ -52,6 +63,7 @@ def create_record(record: RecordCreate):
     }
 
     saved_data = save_record(record_data)
+    update_user_last_activity(data["userId"])
     return {"message": "record saved", "data": format_record(saved_data)}
 
 

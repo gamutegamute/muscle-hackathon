@@ -33,6 +33,7 @@ def create_profile(profile: ProfileCreate):
         "height": data["height"],
         "weight": data["weight"],
         "bodyFat": data["bodyFat"],
+        "expoPushToken": data.get("expoPushToken"),
         "createdAt": datetime.utcnow(),
     }
 
