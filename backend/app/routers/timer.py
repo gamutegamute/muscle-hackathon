@@ -26,3 +26,12 @@ def create_timer_record(record: RecordCreate):
     doc_ref.set(timer_data)
 
     return {"message": "timer record saved", "data": timer_data}
+
+# ✅ 【ここを追加！】 Step 4: usersコレクションの「最新運動日」を更新
+    user_ref = db.collection("users").document(user_id)
+    user_ref.set({
+        "lastActivity": firestore.SERVER_TIMESTAMP,
+        "lastActivityDate": firestore.SERVER_TIMESTAMP # 計算しやすいように2つ持っておくと便利です
+    }, merge=True) # merge=Trueにすることで、他のプロフィール情報を消さずに「追加・更新」できます
+
+    return {"message": "timer record saved and user activity updated", "data": timer_data}
