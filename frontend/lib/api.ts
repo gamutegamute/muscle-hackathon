@@ -113,6 +113,7 @@ export async function upsertProfile(profile: ApiProfile) {
       height: profile.height,
       weight: profile.weight,
       bodyFat: profile.bodyFat,
+      expoPushToken: profile.expoPushToken,
     });
   } catch {
     return createProfile(profile);

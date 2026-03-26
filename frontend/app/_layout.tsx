@@ -5,8 +5,9 @@ import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import 'react-native-reanimated';
 
-import { syncWorkoutData } from '@/lib/workout-sync';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ensureGuestUserId } from '@/lib/guest-session';
+import { syncWorkoutData } from '@/lib/workout-sync';
 
 LogBox.ignoreAllLogs(true);
 
@@ -18,9 +19,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    syncWorkoutData().catch(() => {
-      // 起動時はサイレントに失敗させる
-    });
+    ensureGuestUserId()
+      .then(() => syncWorkoutData())
+      .catch(() => {
+        // 起動直後はサイレントに失敗させる
+      });
   }, []);
 
   return (

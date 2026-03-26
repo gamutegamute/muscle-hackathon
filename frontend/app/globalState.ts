@@ -120,6 +120,7 @@ export const workoutData = {
   },
 
   resetData() {
+    const currentUserId = this.getUserId();
     this.totalMinutes = 0;
     this.todayTotalMinutes = 0;
     this.todayRecords = 0;
@@ -133,7 +134,7 @@ export const workoutData = {
     this.themeColor = '#A4C639';
     this.isVibrationEnabled = true;
     this.userProfile = {
-      userId: DEFAULT_USER_ID,
+      userId: currentUserId,
       name: '筋肉太郎',
       age: '20',
       height: '170',
