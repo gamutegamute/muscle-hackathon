@@ -17,6 +17,7 @@ import { workoutData } from './globalState'; // パスはご自身の環境に�
 
 import * as Notifications from 'expo-notifications';
 import { saveProfileToBackend, syncWorkoutData } from '../lib/workout-sync';
+import Constants from 'expo-constants'; 
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -38,15 +39,15 @@ export default function ProfileSettingsScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // ★ 追加：入力されたデータをglobalStateに保存してからホームへ移動する処理
- const handleSave = async () => {
+ // ★ handleSave の中身をスッキリ整理
+  const handleSave = async () => {
     setIsSaving(true);
     try {
-      // 1. 通知の許可をもらってトークンを取得する
-      let token = "string"; // デフォルト値
+      // 1. まず「トークン」を取得する
+      let token = "string"; 
       try {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status === 'granted') {
-          // ※プロジェクトIDが必要な場合は getExpoPushTokenAsync({ projectId: 'your-id' }) となりますが、まずはこれで試しましょう
           const expoToken = await Notifications.getExpoPushTokenAsync({
             projectId: "f0c47ccd-8cea-4ddd-9c93-009e18c38962", 
           });
@@ -54,12 +55,10 @@ export default function ProfileSettingsScreen() {
           console.log("📱 取得したトークン:", token);
         }
       } catch (e) {
-        console.log("トークン取得失敗（シミュレーターなど）:", e);
+        console.log("トークン取得失敗:", e);
       }
 
-      // 2. 送信データを作成
-    
-      // 3. 状態保存とサーバー送信
+      // 2. 送信するデータを作成
       const profileData = {
         name: name || '筋肉太郎',
         age: Number(age) || 20,
@@ -69,24 +68,42 @@ export default function ProfileSettingsScreen() {
         expoPushToken: token,
       };
 
-      workoutData.setUserProfile(profileData);
-      await fetch(`http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:8000/profile/guest-user`, {
+      // 3. 送り先URLを決定（Constantsを使って自動判別）
+      const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
+      let backendUrl;
+
+      if (debuggerHost) {
+        if (debuggerHost.includes('exp.direct')) {
+          backendUrl = `https://${debuggerHost}/profile/guest-user`;
+        } else {
+          backendUrl = `http://${debuggerHost}:8000/profile/guest-user`;
+        }
+      } else {
+        backendUrl = `http://localhost:8000/profile/guest-user`;
+      }
+
+      console.log("🚀 送信先URL:", backendUrl);
+
+      // 4. サーバー送信
+      await fetch(backendUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profileData),
       });
-      await syncWorkoutData();
 
-      // 4. ホーム画面へ移動
+      // 5. ローカル状態保存と画面遷移
+      workoutData.setUserProfile(profileData);
+      await syncWorkoutData();
       router.replace('/(tabs)/home');
 
     } catch (error) {
-      console.error(error);
-      Alert.alert('保存エラー', 'プロフィールの保存に失敗しました。バックエンドやネットワークを確認してください。');
+      console.error("保存失敗:", error);
+      Alert.alert('保存エラー', '通信に失敗しました。バックエンドを確認してください。');
     } finally {
       setIsSaving(false);
     }
-  };
+  }; // ★ ここでしっかり閉じる！
+
 
   return (
     <SafeAreaView style={styles.container}>

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import ai, home, profile, records, timer
 from app.routers import notifications
+from pydantic import BaseModel
 app = FastAPI(
     title="Muscle Hackathon API",
     version="0.1.0",
@@ -11,9 +12,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[""],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=[""],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
