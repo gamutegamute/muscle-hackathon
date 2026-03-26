@@ -1,10 +1,8 @@
+from zoneinfo import ZoneInfo
+
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-except ImportError:  # pragma: no cover - optional local dependency
-    BackgroundScheduler = None
 
 from app.routers import ai, home, notifications, profile, records, timer
 from app.routers.notifications import send_reminders
@@ -23,16 +21,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+scheduler = BackgroundScheduler(timezone=ZoneInfo("Asia/Tokyo"))
+
 
 def start_scheduler():
-    if BackgroundScheduler is None:
-        print("APScheduler is not installed. Skip scheduled notification job.")
-        return
-
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(send_reminders, "cron", hour=9, minute=0)
-    scheduler.start()
-    print("Notification scheduler started. Daily reminders run at 09:00.")
+    if not scheduler.running:
+        scheduler.add_job(send_reminders, "cron", hour=9, minute=0, id="daily_reminders", replace_existing=True)
+        scheduler.start()
+        print("Notification scheduler started. Daily reminders run at 09:00 JST.")
 
 
 @app.on_event("startup")

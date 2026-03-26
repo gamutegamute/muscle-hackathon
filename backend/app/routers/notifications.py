@@ -8,7 +8,7 @@ from app.firebase import db
 
 try:
     from exponent_server_sdk import PushClient, PushMessage
-except ImportError:  # pragma: no cover - local runtime guard
+except ImportError:  # pragma: no cover - runtime guard for local setup
     PushClient = None
     PushMessage = None
 
@@ -17,47 +17,46 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 MESSAGES = {
     "active": [
-        "Good morning. Let's move your body a little today.",
-        "Consistency matters. How about a short workout today?",
-        "You are doing well. Take one more small step today.",
-        "Let's keep updating today's version of you.",
-        "Workout time. Start with something small and easy.",
+        "おはよう！今日の筋トレ、何から始める？",
+        "継続は力なり！今日もサクッと体を動かそう。",
+        "今日も絶好調だね！マッチョになる準備はできてる？",
+        "いい感じ！今日の自分をさらに超えていこう。",
+        "筋トレの時間だよ！準備はいいかな？",
     ],
     "3days": [
-        "It has been 3 days. Even light stretching is a great restart.",
-        "A small gap is okay. Try moving for just one minute today.",
-        "Let's restart from today.",
-        "A little movement can refresh your mood too.",
-        "It's been a while, so let's start small without pressure.",
+        "3日間お休み中かな？そろそろ体がウズウズしてない？",
+        "3日坊主はもったいない！今日1分だけやってみない？",
+        "お疲れ様！また今日から再スタートしてみよう。",
+        "筋肉が君を待ってるよ！少しだけ動いてリフレッシュ！",
+        "3日ぶり！無理せずスクワット1回から始めよう。",
     ],
     "1week": [
-        "It has been a week. Try coming back with a light workout.",
-        "No problem if it has been a while. Let's move a little today.",
-        "Let's start building your streak again.",
-        "A short workout is a good way to get back in rhythm.",
-        "Let's restart training together.",
+        "1週間経ったよ！まずはストレッチからでもOK！",
+        "お久しぶり！また一緒に汗を流せるのを楽しみにしてるよ。",
+        "1週間お休みしてリフレッシュできたかな？再開しよう！",
+        "体が重くなってない？1週間ぶりの運動でスッキリしよう！",
+        "久しぶり！君の頑張りをまた記録させてね！",
     ],
     "1month": [
-        "It has been a month. Let's start again with a fresh mindset.",
-        "Remember your past effort and ease back into it.",
-        "Today can be your new restart day.",
-        "Start again at a pace that fits you now.",
-        "One new record is enough for today.",
+        "1か月ぶり！新しい気持ちでまた始めてみない？",
+        "久しぶり！1か月前の君はあんなに頑張ってたよ、思い出して！",
+        "筋肉が寂しがってるよ！今日から再デビューしちゃおう！",
+        "1か月経つのは早いね！今の自分が一番若いよ、動こう！",
+        "おーい！元気？また一緒にマッチョを目指そうぜ！",
     ],
     "6months": [
-        "It has been six months. Let's begin again slowly.",
-        "Even after a long break, you can come back step by step.",
-        "Let's make today your new starting line.",
-        "We can build things up together again.",
-        "Whenever you come back, we will be cheering for you.",
+        "半年ぶり！元気だった？また初心に戻ってやってみよう！",
+        "もう半年かぁ。懐かしいね！また少しずつ始めない？",
+        "久しぶりすぎて忘れちゃったかな？君ならまたできるよ！",
+        "半年ぶりの再会！今日が新しいスタートラインだ！",
+        "半年経っても君を応援してるよ！いつでも戻ってきてね！",
     ],
 }
 
 
 class TestNotificationRequest(BaseModel):
-    title: str = Field(default="Workout Reminder", min_length=1, max_length=100)
-    body: str = Field(default="This is a test notification.", min_length=1, max_length=300)
-    priority: str | None = Field(default="high")
+    title: str = Field(default="筋トレ応援アラート", min_length=1, max_length=100)
+    body: str = Field(default="テスト通知です。届いたら成功です。", min_length=1, max_length=300)
 
 
 def ensure_push_sdk():
@@ -68,7 +67,7 @@ def ensure_push_sdk():
         )
 
 
-def send_push_message(*, expo_push_token: str, title: str, body: str, priority: str = "high", data: dict | None = None):
+def send_push_message(*, expo_push_token: str, title: str, body: str, data: dict | None = None):
     ensure_push_sdk()
     push_client = PushClient()
     push_client.publish(
@@ -76,7 +75,7 @@ def send_push_message(*, expo_push_token: str, title: str, body: str, priority: 
             to=expo_push_token,
             title=title,
             body=body,
-            priority=priority,
+            priority="high",
             data=data or {},
         )
     )
@@ -121,7 +120,6 @@ def send_test_notification(user_id: str, payload: TestNotificationRequest):
         expo_push_token=expo_push_token,
         title=payload.title,
         body=payload.body,
-        priority=payload.priority or "high",
         data={"type": "test"},
     )
 
@@ -158,9 +156,8 @@ def send_reminders():
         try:
             send_push_message(
                 expo_push_token=expo_push_token,
-                title="Workout Reminder",
+                title="筋トレ応援アラート",
                 body=selected_message,
-                priority="high",
                 data={"days": days, "category": category},
             )
             status = "sent"

@@ -12,6 +12,7 @@ import {
   createRecord,
   updateRecord,
 } from '@/lib/api';
+import { getExpoPushToken } from '@/lib/push-notifications';
 
 function toLocalRecord(record: ApiRecord): WorkoutRecord {
   return {
@@ -86,6 +87,13 @@ export async function saveProfileToBackend(profile: {
   bodyFat?: string;
 }) {
   const userId = workoutData.getUserId();
+  let expoPushToken: string | undefined;
+
+  try {
+    expoPushToken = await getExpoPushToken();
+  } catch (error) {
+    console.warn('Failed to get Expo push token:', error);
+  }
 
   await upsertProfile({
     userId,
@@ -94,6 +102,7 @@ export async function saveProfileToBackend(profile: {
     height: profile.height ? Number(profile.height) : undefined,
     weight: profile.weight ? Number(profile.weight) : undefined,
     bodyFat: profile.bodyFat ? Number(profile.bodyFat) : undefined,
+    expoPushToken,
   });
 
   workoutData.setUserProfile({
