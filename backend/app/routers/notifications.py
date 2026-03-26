@@ -20,26 +20,36 @@ MESSAGES = {
         "おはようございます。今日も少しだけ体を動かしてみましょう。",
         "継続は力なりです。今日もサクッと筋トレいきましょう。",
         "いい流れです。今日の自分を少しだけ超えてみましょう。",
+        "筋肉が喜んでいます！その調子で今日も積み上げましょう。",
+        "ルーティン化まであと一歩。今日も1セットだけやりませんか？",
     ],
     "3days": [
         "3日ぶりですね。まずは軽めのメニューから再開してみましょう。",
         "少し間が空いても大丈夫です。今日また1歩進めばOKです。",
         "そろそろ体を動かしたくなっていませんか。1分だけでも十分です。",
+        "三日坊主を打破するチャンスです！スクワット3回から始めましょう。",
+        "お久しぶりです！軽いストレッチからリズムを取り戻しませんか？",
     ],
     "1week": [
         "1週間おつかれさまでした。今日はストレッチからでも大丈夫です。",
         "久しぶりの運動は軽めでOKです。まずは再開してみましょう。",
         "また一緒に記録を積み上げていきましょう。",
+        "1週間のブランクは誤差です。今日からまたリスタートしましょう！",
+        "体も心もリフレッシュできたはず。今日からまた再開です！",
     ],
     "1month": [
         "1か月ぶりです。新しい気持ちでまた始めてみませんか。",
         "久しぶりでも大丈夫です。今日の一回が再スタートになります。",
         "前の頑張りは消えていません。今日からまた積み上げましょう。",
+        "お帰りなさい！筋肉はあなたの再開を待っていますよ。",
+        "ブランクを気にせず、まずはアプリを開いた自分を褒めましょう！",
     ],
     "6months": [
         "半年ぶりですね。無理せず初心に戻って始めてみましょう。",
         "久しぶりでも大丈夫です。また少しずつ戻していけます。",
         "今日が新しいスタートラインです。できるところから始めましょう。",
+        "また健康な体作り、一緒に始めませんか？全力で応援します！",
+        "時間が経っても大丈夫。今日この通知を見たのが運命の再開です！",
     ],
 }
 
@@ -47,6 +57,7 @@ MESSAGES = {
 class TestNotificationRequest(BaseModel):
     title: str = Field(default="筋トレ応援アラート", min_length=1, max_length=100)
     body: str = Field(default="テスト通知です。届いたら成功です。", min_length=1, max_length=300)
+    priority: str | None = Field(default="high")
 
 
 def ensure_push_sdk():
@@ -57,7 +68,7 @@ def ensure_push_sdk():
         )
 
 
-def send_push_message(*, expo_push_token: str, title: str, body: str, data: dict | None = None):
+def send_push_message(*, expo_push_token: str, title: str, body: str, priority: str = "high", data: dict | None = None):
     ensure_push_sdk()
     push_client = PushClient()
     push_client.publish(
@@ -65,6 +76,7 @@ def send_push_message(*, expo_push_token: str, title: str, body: str, data: dict
             to=expo_push_token,
             title=title,
             body=body,
+            priority=priority, 
             data=data or {},
         )
     )
@@ -104,11 +116,14 @@ def send_test_notification(user_id: str, payload: TestNotificationRequest):
     expo_push_token = user_data.get("expoPushToken")
     if not expo_push_token:
         raise HTTPException(status_code=400, detail="expoPushToken not found for user")
+    
+    current_priority = payload.priority if payload.priority else "high"
 
     send_push_message(
         expo_push_token=expo_push_token,
         title=payload.title,
         body=payload.body,
+        priority=payload.priority or "high",
         data={"type": "test"},
     )
 
