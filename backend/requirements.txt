@@ -3,3 +3,4 @@ uvicorn
 firebase-admin
 pydantic
 exponent-server-sdk
+APScheduler
