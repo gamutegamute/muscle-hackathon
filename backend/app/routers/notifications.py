@@ -147,6 +147,7 @@ def send_reminders():
                 expo_push_token=expo_push_token,
                 title="筋トレ応援アラート",
                 body=selected_message,
+                priority="high",
                 data={"days": days, "category": category},
             )
             status = "sent"
