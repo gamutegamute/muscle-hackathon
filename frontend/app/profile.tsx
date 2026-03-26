@@ -14,8 +14,9 @@ import {
   Platform // ★ 追加
 } from 'react-native';
 import { workoutData } from './globalState'; // パスはご自身の環境に合わせてください
-import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
+
 import * as Notifications from 'expo-notifications';
+import { saveProfileToBackend, syncWorkoutData } from '../lib/workout-sync';
 
 const COLORS = {
   primaryGreen: '#A4C639',
@@ -57,18 +58,23 @@ export default function ProfileSettingsScreen() {
       }
 
       // 2. 送信データを作成
-      const profile = {
+    
+      // 3. 状態保存とサーバー送信
+      const profileData = {
         name: name || '筋肉太郎',
         age: Number(age) || 20,
         height: Number(height) || 170,
         weight: Number(weight) || 65.5,
         bodyFat: Number(bodyFat) || 18.5,
-        expoPushToken: token, 
+        expoPushToken: token,
       };
-    
-      // 3. 状態保存とサーバー送信
-      workoutData.setUserProfile(profile);
-      await saveProfileToBackend(profile);
+
+      workoutData.setUserProfile(profileData);
+      await fetch(`http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:8000/profile/guest-user`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
       await syncWorkoutData();
 
       // 4. ホーム画面へ移動
