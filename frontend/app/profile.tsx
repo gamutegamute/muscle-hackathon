@@ -36,7 +36,7 @@ export default function ProfileSettingsScreen() {
 
   const handleSave = async () => {
     const profile = {
-      name: name.trim() || 'Guest User',
+      name: name.trim() || 'ゲストユーザー',
       age: age.trim() || '20',
       height: height.trim() || '170',
       weight: weight.trim() || '65',
@@ -51,8 +51,8 @@ export default function ProfileSettingsScreen() {
       router.replace('/(tabs)/home');
     } catch {
       Alert.alert(
-        'Save Error',
-        'Failed to save profile. Please check backend startup and API base URL.',
+        '保存エラー',
+        'プロフィールの保存に失敗しました。バックエンド起動と API 接続先を確認してください。',
       );
     } finally {
       setIsSaving(false);
@@ -69,37 +69,37 @@ export default function ProfileSettingsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Profile Setup</Text>
+            <Text style={styles.headerTitle}>プロフィール設定</Text>
           </View>
 
           <View style={styles.formContainer}>
-            <InputCard label="Name" value={name} onChangeText={setName} placeholder="Name" />
-            <InputCard label="Age" value={age} onChangeText={setAge} placeholder="Age" keyboardType="numeric" />
+            <InputCard label="名前" value={name} onChangeText={setName} placeholder="名前" />
+            <InputCard label="年齢" value={age} onChangeText={setAge} placeholder="年齢" keyboardType="numeric" />
             <InputCard
-              label="Height"
+              label="身長"
               value={height}
               onChangeText={setHeight}
-              placeholder="Height"
+              placeholder="身長"
               keyboardType="numeric"
             />
             <InputCard
-              label="Weight"
+              label="体重"
               value={weight}
               onChangeText={setWeight}
-              placeholder="Weight"
+              placeholder="体重"
               keyboardType="numeric"
             />
             <InputCard
-              label="Body Fat"
+              label="体脂肪率"
               value={bodyFat}
               onChangeText={setBodyFat}
-              placeholder="Body Fat"
+              placeholder="体脂肪率"
               keyboardType="numeric"
             />
           </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save and Start'}</Text>
+            <Text style={styles.saveButtonText}>{isSaving ? '保存中...' : '保存して始める'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

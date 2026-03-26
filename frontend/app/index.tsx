@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ensureGuestUserId } from '@/lib/guest-session';
 
@@ -22,17 +22,17 @@ export default function App() {
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoText}>M</Text>
+        <View style={styles.frameOne}>
+          <View style={styles.frameTwo}>
+            <Text style={styles.placeholder}>仮</Text>
           </View>
-          <Text style={styles.appName}>Muscle App</Text>
-          <Text style={styles.subTitle}>Workout Support</Text>
+          <Text style={styles.appName}>アプリ名</Text>
+          <Text style={styles.subTitle}>サブタイトル</Text>
         </View>
 
-        <View style={styles.formSection}>
+        <View style={styles.frameThree}>
           <View style={styles.formFields}>
-            <Text style={styles.fieldLabel}>Email</Text>
+            <Text style={styles.fieldLabel}>メールアドレス</Text>
             <TextInput
               style={styles.inputField}
               placeholder="example@email.com"
@@ -43,10 +43,10 @@ export default function App() {
               autoCapitalize="none"
             />
 
-            <Text style={[styles.fieldLabel, styles.passwordLabel]}>Password</Text>
+            <Text style={[styles.fieldLabel, styles.passwordLabel]}>パスワード</Text>
             <TextInput
               style={styles.inputField}
-              placeholder="Enter password"
+              placeholder="パスワードを入力"
               placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
@@ -55,13 +55,35 @@ export default function App() {
           </View>
 
           <TouchableOpacity style={styles.loginButton} activeOpacity={0.8}>
-            <Text style={styles.loginButtonLabel}>Login</Text>
+            <Text style={styles.loginButtonLabel}>login</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}>
+        <View style={styles.frameFive}>
+          <View style={styles.frameSix}>
+            <View style={styles.frameSeven}>
+              <TouchableOpacity style={styles.link}>
+                <Text style={styles.linkText}>新規登録はこちら</Text>
+              </TouchableOpacity>
+
+              <View style={styles.orGroup}>
+                <View style={styles.line} />
+                <Text style={styles.orText}>又は</Text>
+                <View style={styles.line} />
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
+              <Image
+                source={{ uri: 'https://codia-f2c.s3.us-west-1.amazonaws.com/image/2026-03-19/bzkXkguV7T.png' }}
+                style={styles.googleIcon}
+              />
+              <Text style={styles.googleButtonText}>Googleで続ける</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity onPress={() => void handleGuestLogin()}>
-            <Text style={styles.guestText}>Start without login (Guest)</Text>
+            <Text style={styles.guestText}>登録せずに始める（ゲスト）</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -79,15 +101,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 50,
-    gap: 24,
+    gap: 10,
     backgroundColor: '#f2f2f7',
   },
-  header: {
+  frameOne: {
+    flexDirection: 'column',
     alignItems: 'center',
     gap: 10,
-    width: 220,
+    width: 162,
   },
-  logoBox: {
+  frameTwo: {
     width: 100,
     height: 100,
     backgroundColor: '#8ac75a',
@@ -101,24 +124,29 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  logoText: {
+  placeholder: {
+    fontFamily: 'System',
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#030303',
   },
   appName: {
-    fontSize: 36,
+    width: 162,
+    fontFamily: 'System',
+    fontSize: 40,
     fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
   },
   subTitle: {
+    fontFamily: 'System',
     fontSize: 12,
     fontWeight: '400',
     color: '#000000',
     textAlign: 'center',
   },
-  formSection: {
+  frameThree: {
+    flexDirection: 'column',
     alignItems: 'center',
     gap: 20,
     width: 350,
@@ -126,11 +154,13 @@ const styles = StyleSheet.create({
   formFields: {
     width: 350,
     gap: 5,
+    flexDirection: 'column',
   },
   fieldLabel: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000000',
+    fontFamily: 'System',
     marginBottom: 5,
     marginTop: 10,
   },
@@ -159,16 +189,88 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: 'System',
   },
-  footer: {
+  frameFive: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 25,
     width: 350,
     marginTop: 20,
+  },
+  frameSix: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 30,
+    width: 350,
+  },
+  frameSeven: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 25,
+    width: 350,
+  },
+  link: {
+    paddingHorizontal: 3,
+    height: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#007aff',
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'System',
+    textAlign: 'center',
+  },
+  orGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 350,
+    height: 30,
+    gap: 8,
+  },
+  line: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#c7c7cc',
+  },
+  orText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000000',
+    fontFamily: 'System',
+    textAlign: 'center',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    width: 350,
+    height: 40,
+    backgroundColor: '#dadce0',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleIcon: {
+    width: 29,
+    height: 29,
+    resizeMode: 'cover',
+  },
+  googleButtonText: {
+    fontSize: 17,
+    color: '#000000',
+    fontFamily: 'System',
+    textAlign: 'center',
   },
   guestText: {
     width: 350,
     fontSize: 15,
     fontWeight: '500',
     color: '#000000',
+    fontFamily: 'System',
     textAlign: 'center',
     lineHeight: 20,
   },
