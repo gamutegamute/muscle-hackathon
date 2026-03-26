@@ -4,6 +4,8 @@ import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, Touchable
 
 import { ensureGuestUserId } from '@/lib/guest-session';
 
+const APP_ICON = require('../assets/images/muscloop-logo.png');
+
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,10 +26,10 @@ export default function App() {
       >
         <View style={styles.frameOne}>
           <View style={styles.frameTwo}>
-            <Text style={styles.placeholder}>仮</Text>
+            <Image source={APP_ICON} style={styles.appIcon} />
           </View>
-          <Text style={styles.appName}>アプリ名</Text>
-          <Text style={styles.subTitle}>サブタイトル</Text>
+          <Text style={styles.appName}>muscloop</Text>
+          <Text style={styles.subTitle}>毎日の筋トレを、無理なく続ける。</Text>
         </View>
 
         <View style={styles.frameThree}>
@@ -108,37 +110,38 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     gap: 10,
-    width: 162,
+    width: 220,
   },
   frameTwo: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#8ac75a',
-    borderRadius: 12,
+    width: 128,
+    height: 128,
+    backgroundColor: 'transparent',
+    borderRadius: 24,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 2,
   },
-  placeholder: {
-    fontFamily: 'System',
-    fontSize: 48,
-    fontWeight: '400',
-    color: '#030303',
+  appIcon: {
+    width: 128,
+    height: 128,
+    resizeMode: 'cover',
   },
   appName: {
-    width: 162,
+    width: 220,
     fontFamily: 'System',
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
   },
   subTitle: {
+    width: 220,
     fontFamily: 'System',
     fontSize: 12,
     fontWeight: '400',
