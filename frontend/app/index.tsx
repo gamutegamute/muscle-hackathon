@@ -1,19 +1,140 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { workoutData } from '@/app/globalState';
+import { getProfile } from '@/lib/api';
 import { ensureGuestUserId } from '@/lib/guest-session';
+import { syncWorkoutData } from '@/lib/workout-sync';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const APP_ICON = require('../assets/images/muscloop-logo.png');
 
+type AuthMode = 'login' | 'signup';
+
+type GoogleLoginButtonProps = {
+  disabled: boolean;
+  onLoginSuccess: (userId: string) => Promise<void>;
+};
+
+function GoogleLoginButton({ disabled, onLoginSuccess }: GoogleLoginButtonProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    scopes: ['profile', 'email'],
+  });
+
+  useEffect(() => {
+    if (response?.type !== 'success') {
+      return;
+    }
+
+    const idToken = response.params?.id_token;
+    if (!idToken) {
+      Alert.alert('Googleログインエラー', 'Google の ID トークンを取得できませんでした。');
+      return;
+    }
+
+    const run = async () => {
+      setIsSubmitting(true);
+      try {
+        const { loginWithGoogleIdToken } = await import('@/lib/auth');
+        const credential = await loginWithGoogleIdToken(idToken);
+        await onLoginSuccess(credential.user.uid);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Googleログインに失敗しました。';
+        Alert.alert('Googleログインエラー', message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    void run();
+  }, [onLoginSuccess, response]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.googleButton, (disabled || isSubmitting) && styles.disabledButton]}
+      activeOpacity={0.8}
+      onPress={() => void promptAsync()}
+      disabled={disabled || isSubmitting || !request}>
+      <Text style={styles.googleMark}>G</Text>
+      <Text style={styles.googleButtonText}>Googleで続ける</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function App() {
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
+  const hasGoogleClientConfig = useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return Boolean(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+    }
+    if (Platform.OS === 'android') {
+      return Boolean(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+    }
+    return Boolean(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+  }, []);
+
+  const completeLogin = useCallback(
+    async (userId: string) => {
+      workoutData.setUserProfile({ userId });
+
+      try {
+        await getProfile(userId);
+        await syncWorkoutData();
+        router.replace('/(tabs)/home');
+      } catch {
+        router.replace('/profile');
+      }
+    },
+    [router],
+  );
 
   const handleGuestLogin = async () => {
     await ensureGuestUserId();
     router.replace('/profile');
+  };
+
+  const handleEmailAuth = async () => {
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail || !password) {
+      Alert.alert('入力エラー', 'メールアドレスとパスワードを入力してください。');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('入力エラー', 'パスワードは6文字以上で入力してください。');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { loginWithEmail, registerWithEmail } = await import('@/lib/auth');
+      const credential =
+        mode === 'signup'
+          ? await registerWithEmail(normalizedEmail, password)
+          : await loginWithEmail(normalizedEmail, password);
+
+      await completeLogin(credential.user.uid);
+    } catch (error) {
+      const fallbackMessage = mode === 'signup' ? '新規登録に失敗しました。' : 'ログインに失敗しました。';
+      const message = error instanceof Error ? error.message : fallbackMessage;
+      Alert.alert(mode === 'signup' ? '新規登録エラー' : 'ログインエラー', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -22,17 +143,16 @@ export default function App() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="never"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.frameOne}>
-          <View style={styles.frameTwo}>
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <View style={styles.logoFrame}>
             <Image source={APP_ICON} style={styles.appIcon} />
           </View>
           <Text style={styles.appName}>muscloop</Text>
           <Text style={styles.subTitle}>毎日の筋トレを、無理なく続ける。</Text>
         </View>
 
-        <View style={styles.frameThree}>
+        <View style={styles.formArea}>
           <View style={styles.formFields}>
             <Text style={styles.fieldLabel}>メールアドレス</Text>
             <TextInput
@@ -43,6 +163,7 @@ export default function App() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
 
             <Text style={[styles.fieldLabel, styles.passwordLabel]}>パスワード</Text>
@@ -56,33 +177,44 @@ export default function App() {
             />
           </View>
 
-          <TouchableOpacity style={styles.loginButton} activeOpacity={0.8}>
-            <Text style={styles.loginButtonLabel}>login</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+            activeOpacity={0.8}
+            onPress={() => void handleEmailAuth()}
+            disabled={isSubmitting}>
+            <Text style={styles.primaryButtonText}>{mode === 'signup' ? '新規登録' : 'ログイン'}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.frameFive}>
-          <View style={styles.frameSix}>
-            <View style={styles.frameSeven}>
-              <TouchableOpacity style={styles.link}>
-                <Text style={styles.linkText}>新規登録はこちら</Text>
-              </TouchableOpacity>
+        <View style={styles.secondaryArea}>
+          <TouchableOpacity style={styles.link} onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+            <Text style={styles.linkText}>
+              {mode === 'login' ? '新規登録はこちら' : 'すでにアカウントをお持ちの方はこちら'}
+            </Text>
+          </TouchableOpacity>
 
-              <View style={styles.orGroup}>
-                <View style={styles.line} />
-                <Text style={styles.orText}>又は</Text>
-                <View style={styles.line} />
-              </View>
-            </View>
+          <View style={styles.orGroup}>
+            <View style={styles.line} />
+            <Text style={styles.orText}>または</Text>
+            <View style={styles.line} />
+          </View>
 
-            <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
-              <Image
-                source={{ uri: 'https://codia-f2c.s3.us-west-1.amazonaws.com/image/2026-03-19/bzkXkguV7T.png' }}
-                style={styles.googleIcon}
-              />
+          {hasGoogleClientConfig ? (
+            <GoogleLoginButton disabled={isSubmitting} onLoginSuccess={completeLogin} />
+          ) : (
+            <TouchableOpacity
+              style={[styles.googleButton, styles.disabledButton]}
+              activeOpacity={0.8}
+              onPress={() =>
+                Alert.alert(
+                  'Googleログイン未設定',
+                  'この端末向けの Google client ID がまだ設定されていません。メール/パスワードかゲスト利用を先に使えます。',
+                )
+              }>
+              <Text style={styles.googleMark}>G</Text>
               <Text style={styles.googleButtonText}>Googleで続ける</Text>
             </TouchableOpacity>
-          </View>
+          )}
 
           <TouchableOpacity onPress={() => void handleGuestLogin()}>
             <Text style={styles.guestText}>登録せずに始める（ゲスト）</Text>
@@ -103,16 +235,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 50,
-    gap: 10,
+    gap: 18,
     backgroundColor: '#f2f2f7',
   },
-  frameOne: {
-    flexDirection: 'column',
+  hero: {
     alignItems: 'center',
     gap: 10,
     width: 220,
   },
-  frameTwo: {
+  logoFrame: {
     width: 128,
     height: 128,
     backgroundColor: 'transparent',
@@ -120,7 +251,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -134,7 +264,6 @@ const styles = StyleSheet.create({
   },
   appName: {
     width: 220,
-    fontFamily: 'System',
     fontSize: 36,
     fontWeight: '700',
     color: '#000000',
@@ -142,14 +271,12 @@ const styles = StyleSheet.create({
   },
   subTitle: {
     width: 220,
-    fontFamily: 'System',
     fontSize: 12,
     fontWeight: '400',
     color: '#000000',
     textAlign: 'center',
   },
-  frameThree: {
-    flexDirection: 'column',
+  formArea: {
     alignItems: 'center',
     gap: 20,
     width: 350,
@@ -157,13 +284,11 @@ const styles = StyleSheet.create({
   formFields: {
     width: 350,
     gap: 5,
-    flexDirection: 'column',
   },
   fieldLabel: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000000',
-    fontFamily: 'System',
     marginBottom: 5,
     marginTop: 10,
   },
@@ -174,12 +299,12 @@ const styles = StyleSheet.create({
     width: 350,
     height: 48,
     paddingHorizontal: 20,
-    backgroundColor: '#EAEAEA',
+    backgroundColor: '#eaeaea',
     borderRadius: 25,
     fontSize: 16,
-    color: '#333',
+    color: '#333333',
   },
-  loginButton: {
+  primaryButton: {
     width: 350,
     height: 48,
     backgroundColor: '#8ac75a',
@@ -188,34 +313,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 10,
   },
-  loginButtonLabel: {
+  primaryButtonText: {
     color: '#ffffff',
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'System',
   },
-  frameFive: {
-    flexDirection: 'column',
+  secondaryArea: {
     alignItems: 'flex-start',
     gap: 25,
     width: 350,
-    marginTop: 20,
-  },
-  frameSix: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 30,
-    width: 350,
-  },
-  frameSeven: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 25,
-    width: 350,
+    marginTop: 10,
   },
   link: {
+    alignSelf: 'center',
     paddingHorizontal: 3,
-    height: 26,
+    minHeight: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -223,7 +335,6 @@ const styles = StyleSheet.create({
     color: '#007aff',
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'System',
     textAlign: 'center',
   },
   orGroup: {
@@ -242,7 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: 'System',
     textAlign: 'center',
   },
   googleButton: {
@@ -257,15 +367,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  googleIcon: {
-    width: 29,
-    height: 29,
-    resizeMode: 'cover',
+  googleMark: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4285f4',
   },
   googleButtonText: {
     fontSize: 17,
     color: '#000000',
-    fontFamily: 'System',
     textAlign: 'center',
   },
   guestText: {
@@ -273,8 +382,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#000000',
-    fontFamily: 'System',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
