@@ -31,9 +31,18 @@ cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+copy .env.example .env
 ```
 
 `backend/serviceAccountKey.json` を配置してください。
+`backend/.env` の `GEMINI_API_KEY` に Gemini API キーを設定してください。
+
+例:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
+```
 
 起動:
 

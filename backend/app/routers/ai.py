@@ -18,15 +18,15 @@ def get_user_records(user_id: str):
 
 
 @router.post("/advice", response_model=AdviceResponse)
-def get_advice(request: AdviceRequest):
-    profile = get_user(request.userId) or {}
-    records = get_user_records(request.userId)
+def get_advice(request_data: AdviceRequest):
+    profile = get_user(request_data.userId) or {}
+    records = get_user_records(request_data.userId)
     user_name = profile.get("name") or "あなた"
 
     return build_ai_advice(
         user_name=user_name,
-        level=request.level,
-        topic=request.topic,
-        message=request.message,
+        level=request_data.level,
+        topic=request_data.topic,
+        message=request_data.message,
         records=records,
     )

@@ -1,4 +1,4 @@
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
@@ -25,19 +25,36 @@ const COLORS = {
   aiBubble: '#E8F5E9',
 };
 
+const LEVEL_OPTIONS = ['初心者（これから始める）', '中級者（週1〜3回）', '上級者（ガチ勢）'];
+
+const LEVEL_PROMPTS: Record<string, string[]> = {
+  '初心者（これから始める）': ['今日のメニューを考えて', '少し疲れてるので軽めがいい', '家でできる内容にして'],
+  '中級者（週1〜3回）': ['今日のメニューを考えて', '最近少しマンネリ気味', '部位分けの相談をしたい'],
+  '上級者（ガチ勢）': ['今日のメニューを考えて', 'MAXを伸ばしたい', '強度高めで組みたい'],
+};
+
+type MenuData = {
+  name: string;
+  count: number;
+  sets: number;
+  mins: number;
+  secs: number;
+};
+
 type Message = {
   id: number;
   sender: 'ai' | 'user';
   text: string;
   showRecordButton?: boolean;
-  menuData?: { name: string; count: number; sets: number; mins: number; secs: number };
+  menuData?: MenuData;
 };
 
-const LEVEL_OPTIONS = ['初心者（これから始める）', '中級者（週1〜2回）', '上級者（ガチ勢🔥）'];
-const LEVEL_PROMPTS: Record<string, string[]> = {
-  '初心者（これから始める）': ['今日のメニューは？', '筋肉痛がひどい…', 'プロテインって必要？'],
-  '中級者（週1〜2回）': ['今日のメニューは？', '停滞期を抜け出したい', '分割法って？'],
-  '上級者（ガチ勢🔥）': ['今日のメニューは？', 'MAX重量を伸ばす', '追い込みのコツ'],
+const sanitizeRecentMenus = (menus: string[]) => {
+  return menus
+    .map((menu) => menu.trim())
+    .filter((menu) => menu.length >= 2)
+    .filter((menu) => !/^[ぁ-んァ-ンーa-zA-Z0-9]$/.test(menu))
+    .slice(0, 2);
 };
 
 export default function AiChatScreen() {
@@ -50,7 +67,7 @@ export default function AiChatScreen() {
     {
       id: 1,
       sender: 'ai',
-      text: 'はじめまして！あなたの専属AIトレーナーです。\nまずは、普段の運動レベルを教えてください！',
+      text: 'こんにちは。今日の体調や気分に合わせてトレーニングを提案します。レベルを選ぶか、そのまま自由に相談してください。',
     },
   ]);
   const [inputText, setInputText] = useState('');
@@ -95,9 +112,10 @@ export default function AiChatScreen() {
         message,
       });
 
+      const recentMenus = sanitizeRecentMenus(advice.summary.recentMenus);
       const summaryText =
-        advice.summary.recentMenus.length > 0
-          ? `最近は ${advice.summary.recentMenus.slice(0, 2).join('、')} に取り組めています。`
+        recentMenus.length > 0
+          ? `最近は ${recentMenus.join('、')} に取り組めていますね。`
           : 'まだ記録が少ないので、まずは続けやすい内容から整えていきましょう。';
 
       appendAiMessages([
@@ -109,7 +127,7 @@ export default function AiChatScreen() {
         {
           id: Date.now() + 2,
           sender: 'ai',
-          text: `${summaryText}\nこのメニューなら今の流れに合わせて続けやすいです。`,
+          text: `${summaryText}\nこの内容でそのまま記録画面に移れます。`,
           showRecordButton: true,
           menuData: {
             name: advice.recommendation.menuName,
@@ -134,24 +152,24 @@ export default function AiChatScreen() {
     workoutData.incrementAiCount();
     checkAndNavigate();
 
-    if (userLevel === null) {
+    if (userLevel === null && LEVEL_OPTIONS.includes(prompt)) {
       setUserLevel(prompt);
       appendAiMessages([
         {
           id: Date.now() + 1,
           sender: 'ai',
-          text: `${prompt}ですね！承知しました。\nあなたの記録も見ながら、合いそうなメニューを提案していきますね。`,
+          text: `${prompt}ですね。ありがとうございます。`,
         },
         {
           id: Date.now() + 2,
           sender: 'ai',
-          text: '今日の体調や、聞きたいことがあれば下のボタンかメッセージで送ってください！',
+          text: 'では、今日の体調や気分、やりたいことを自由に送ってください。',
         },
       ]);
       return;
     }
 
-    await requestAdvice(prompt);
+    await requestAdvice(prompt, prompt);
   };
 
   const handleSend = async () => {
@@ -167,21 +185,10 @@ export default function AiChatScreen() {
     workoutData.incrementAiCount();
     checkAndNavigate();
 
-    if (userLevel === null) {
-      appendAiMessages([
-        {
-          id: Date.now() + 1,
-          sender: 'ai',
-          text: 'まずは運動レベルを教えてもらえると、あなた向けの提案がかなりしやすくなります！',
-        },
-      ]);
-      return;
-    }
-
     await requestAdvice(nextText, nextText);
   };
 
-  const handleRecordCompletePress = (menuData?: Message['menuData']) => {
+  const handleRecordCompletePress = (menuData?: MenuData) => {
     if (menuData) {
       router.push({
         pathname: '/(tabs)/kiroku',
@@ -203,7 +210,7 @@ export default function AiChatScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: COLORS.white }]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/home')}>
-          <Text style={[styles.backButtonText, { color: theme }]}>＜ 戻る</Text>
+          <Text style={[styles.backButtonText, { color: theme }]}>戻る</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AIトレーナー相談</Text>
         <View style={{ width: 60 }} />
@@ -260,7 +267,7 @@ export default function AiChatScreen() {
               </View>
               <View style={[styles.bubble, styles.aiBubble, { paddingVertical: 8, paddingHorizontal: 20 }]}>
                 <Text style={[styles.bubbleText, styles.aiBubbleText, { fontSize: 24, letterSpacing: 2 }]}>
-                  ・・・
+                  ...
                 </Text>
               </View>
             </View>
@@ -284,7 +291,7 @@ export default function AiChatScreen() {
           <View style={styles.inputBar}>
             <TextInput
               style={styles.textInput}
-              placeholder="メッセージを入力..."
+              placeholder="今日の体調ややりたいことを入力..."
               placeholderTextColor={COLORS.grayText}
               value={inputText}
               onChangeText={setInputText}
