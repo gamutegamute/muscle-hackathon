@@ -186,7 +186,7 @@ export default function GraphScreen() {
                       return (
                         <View key={i}>
                           <View style={[styles.gridLine, { top: y }]} />
-                          <Text style={[styles.gridText, { top: y - 6 }]}>
+                          <Text style={[styles.gridText, { top: y - 6 , left: -10}]}>
                             {Math.round(g)}
                           </Text>
                         </View>
