@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { workoutData } from '../globalState';
 import { saveRecordToBackend, syncWorkoutData } from '@/lib/workout-sync';
+import { playSwitchSound } from '@/lib/sound';
 
 const COLORS = {
   background: '#F5F5F5',
@@ -282,6 +283,7 @@ export default function DetailedRecordScreen() {
     if (isRunning && activeTab === 'timer' && timeLeft > 0) {
       timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
     } else if (isRunning && activeTab === 'timer' && timeLeft === 0) {
+      playSwitchSound();
       
       if (workoutData.isVibrationEnabled) {
         if (phase === 'WORK') {

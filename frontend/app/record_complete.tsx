@@ -13,6 +13,7 @@ const COLORS = {
     accent: '#FFD700', // ゴールド
 };
 
+
 const Sparkle = ({ style, color }: { style: any, color: string }) => (
     <Ionicons name="sparkles" size={20} color={color} style={[styles.sparkle, style]} />
 );
@@ -30,7 +31,7 @@ export default function RecordCompleteScreen() {
 
     const streakDays = workoutData.streakDays;
     const latestId = workoutData.latestAchievementId;
-    const newAchievement = workoutData.ACHIEVEMENTS.find(a => a.id === latestId);
+    const newAchievement = workoutData.ACHIEVEMENTS.find((a: any) => a.id === latestId);
     
     // ★ 判定：本当の「レア」だけを黒背景（isRare）にする
     const isRare = latestId === 'streak_30' || latestId === 'time_500';
