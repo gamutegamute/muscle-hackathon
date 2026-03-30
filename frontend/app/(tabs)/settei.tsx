@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
+  AppState,
   FlatList,
   Linking,
   Modal,
@@ -47,6 +48,41 @@ interface StatusItemProps {
   themeColor: string;
 }
 
+type ProfileState = {
+  name: string;
+  rank: string;
+  height: string;
+  weight: string;
+  bodyFat: string;
+  avatar: string | null;
+};
+
+type PersistOptions = {
+  syncAfterSave?: boolean;
+  themeColor?: string;
+  equippedBadge?: string;
+  isVibrationEnabled?: boolean;
+};
+
+function getDefaultName() {
+  return workoutData.userProfile?.name || '筋肉太郎';
+}
+
+function getDefaultBadge() {
+  return workoutData.equippedBadge || '🌱 はじまりの一歩';
+}
+
+function getInitialProfileState(): ProfileState {
+  return {
+    name: getDefaultName(),
+    rank: getDefaultBadge(),
+    height: workoutData.userProfile?.height || '170',
+    weight: workoutData.userProfile?.weight || '65.5',
+    bodyFat: workoutData.userProfile?.bodyFat || '18.5',
+    avatar: workoutData.userProfile?.avatar || null,
+  };
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -58,57 +94,23 @@ export default function ProfileScreen() {
   const [isCheckingNotificationPermission, setIsCheckingNotificationPermission] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [theme, setTheme] = useState(workoutData.themeColor);
-
-  const [profile, setProfile] = useState({
-    name: workoutData.userProfile?.name || '筋肉太郎',
-    rank: workoutData.equippedBadge || '🌱 はじまりの一歩',
-    height: workoutData.userProfile?.height || '170',
-    weight: workoutData.userProfile?.weight || '65.5',
-    bodyFat: workoutData.userProfile?.bodyFat || '18.5',
-    avatar: workoutData.userProfile?.avatar || null,
-  });
+  const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
+  const isPersistingNameRef = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = workoutData.subscribeColor((newColor) => {
+    const unsubscribe = workoutData.subscribeColor((newColor: string) => {
       setTheme(newColor);
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!showNotifyModal) return;
-
-    void (async () => {
-      try {
-        setIsCheckingNotificationPermission(true);
-        const settings = await Notifications.getPermissionsAsync();
-        setNotificationPermissionRaw(settings.status);
-      } catch {
-        setNotificationPermissionRaw('undetermined');
-      } finally {
-        setIsCheckingNotificationPermission(false);
-      }
-    })();
-  }, [showNotifyModal]);
-
   useFocusEffect(
     useCallback(() => {
-      setProfile((prev) => ({
-        ...prev,
-        name: workoutData.userProfile?.name || '筋肉太郎',
-        height: workoutData.userProfile?.height || '170',
-        weight: workoutData.userProfile?.weight || '65.5',
-        bodyFat: workoutData.userProfile?.bodyFat || '18.5',
-        rank: workoutData.equippedBadge || '🌱 はじまりの一歩',
-        avatar: workoutData.userProfile?.avatar || null,
-      }));
+      setTheme(workoutData.themeColor);
+      setVibeEnabled(workoutData.isVibrationEnabled);
+      setProfile(getInitialProfileState());
     }, []),
   );
-
-  const unlockedBadges = [
-    { id: 'default_0', name: 'はじまりの一歩', icon: '🌱' },
-    ...workoutData.ACHIEVEMENTS.filter((ach) => workoutData.unlockedAchievements.includes(ach.id)),
-  ];
 
   const helpGuideData = [
     {
@@ -137,6 +139,121 @@ export default function ProfileScreen() {
     },
   ];
 
+  const unlockedBadges = [
+    { id: 'default_0', name: 'はじまりの一歩', icon: '🌱' },
+    ...workoutData.ACHIEVEMENTS.filter((ach: (typeof workoutData.ACHIEVEMENTS)[number]) => workoutData.unlockedAchievements.includes(ach.id)),
+  ];
+
+  const buildPersistedProfilePayload = (overrides?: Partial<ProfileState>, options?: PersistOptions) => {
+    const nextProfile = { ...profile, ...overrides };
+    const nextName = nextProfile.name.trim() || workoutData.userProfile?.name || 'あなた';
+
+    return {
+      name: nextName,
+      age: workoutData.userProfile.age,
+      height: nextProfile.height,
+      weight: nextProfile.weight,
+      bodyFat: nextProfile.bodyFat,
+      avatar: nextProfile.avatar,
+      equippedBadge: options?.equippedBadge ?? nextProfile.rank ?? workoutData.equippedBadge ?? '🌱 はじまりの一歩',
+      themeColor: options?.themeColor ?? workoutData.themeColor,
+      isVibrationEnabled: options?.isVibrationEnabled ?? workoutData.isVibrationEnabled,
+    };
+  };
+
+  const persistProfileState = async (
+    overrides?: Partial<ProfileState>,
+    options?: PersistOptions,
+  ) => {
+    const payload = buildPersistedProfilePayload(overrides, options);
+    const previousProfile = { ...workoutData.userProfile };
+    const previousBadge = workoutData.equippedBadge;
+    const previousTheme = workoutData.themeColor;
+    const previousVibration = workoutData.isVibrationEnabled;
+
+    workoutData.setThemeColor(payload.themeColor);
+    workoutData.setVibrationEnabled(payload.isVibrationEnabled);
+    setProfile({
+      name: payload.name,
+      rank: payload.equippedBadge,
+      height: payload.height,
+      weight: payload.weight,
+      bodyFat: payload.bodyFat,
+      avatar: payload.avatar ?? null,
+    });
+    workoutData.equippedBadge = payload.equippedBadge;
+    setTheme(payload.themeColor);
+    setVibeEnabled(payload.isVibrationEnabled);
+    workoutData.setUserProfile({
+      name: payload.name,
+      height: payload.height,
+      weight: payload.weight,
+      bodyFat: payload.bodyFat,
+      avatar: payload.avatar ?? null,
+    });
+
+    try {
+      await saveProfileToBackend({
+        name: payload.name,
+        age: payload.age,
+        height: payload.height,
+        weight: payload.weight,
+        bodyFat: payload.bodyFat,
+        avatar: payload.avatar,
+        themeColor: payload.themeColor,
+        equippedBadge: payload.equippedBadge,
+        isVibrationEnabled: payload.isVibrationEnabled,
+      });
+
+      if (options?.syncAfterSave !== false) {
+        await syncWorkoutData();
+      }
+    } catch {
+      workoutData.equippedBadge = previousBadge;
+      workoutData.setThemeColor(previousTheme);
+      workoutData.setVibrationEnabled(previousVibration);
+      workoutData.setUserProfile(previousProfile);
+      setTheme(previousTheme);
+      setVibeEnabled(previousVibration);
+      setProfile({
+        name: previousProfile.name || '筋肉太郎',
+        rank: previousBadge || '🌱 はじまりの一歩',
+        height: previousProfile.height || '170',
+        weight: previousProfile.weight || '65.5',
+        bodyFat: previousProfile.bodyFat || '18.5',
+        avatar: previousProfile.avatar || null,
+      });
+    }
+  };
+
+  const syncNotificationPermissionState = useCallback(async () => {
+    try {
+      setIsCheckingNotificationPermission(true);
+      const settings = await Notifications.getPermissionsAsync();
+      setNotificationPermissionRaw(settings.status);
+      await persistProfileState(undefined, { syncAfterSave: false });
+    } catch {
+      setNotificationPermissionRaw('undetermined');
+    } finally {
+      setIsCheckingNotificationPermission(false);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!showNotifyModal) return;
+
+    void syncNotificationPermissionState();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void syncNotificationPermissionState();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [showNotifyModal, syncNotificationPermissionState]);
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -147,23 +264,23 @@ export default function ProfileScreen() {
 
     if (!result.canceled) {
       const imageUri = result.assets[0].uri;
-      setProfile({ ...profile, avatar: imageUri });
-      workoutData.setUserProfile({ avatar: imageUri } as any);
+      setProfile((prev) => ({ ...prev, avatar: imageUri }));
+      void persistProfileState({ avatar: imageUri }, { syncAfterSave: false });
     }
   };
 
   const handleSelectBadge = (badgeIcon: string, badgeName: string) => {
     const fullBadgeString = `${badgeIcon} ${badgeName}`;
-    setProfile({ ...profile, rank: fullBadgeString });
-    workoutData.equippedBadge = fullBadgeString;
+    setProfile((prev) => ({ ...prev, rank: fullBadgeString }));
     setShowBadgeModal(false);
+    void persistProfileState({ rank: fullBadgeString }, { syncAfterSave: false, equippedBadge: fullBadgeString });
   };
 
   const handleThemeChange = () => {
     const currentIndex = THEME_OPTIONS.findIndex((opt) => opt.color === theme);
     const nextIndex = (currentIndex + 1) % THEME_OPTIONS.length;
     const nextTheme = THEME_OPTIONS[nextIndex];
-    workoutData.setThemeColor(nextTheme.color);
+    void persistProfileState(undefined, { syncAfterSave: false, themeColor: nextTheme.color });
   };
 
   const handleLogout = () => {
@@ -172,8 +289,7 @@ export default function ProfileScreen() {
   };
 
   const toggleVibe = (value: boolean) => {
-    setVibeEnabled(value);
-    workoutData.setVibrationEnabled(value);
+    void persistProfileState(undefined, { syncAfterSave: false, isVibrationEnabled: value });
   };
 
   const requestNotificationPermission = async () => {
@@ -181,6 +297,7 @@ export default function ProfileScreen() {
       setIsCheckingNotificationPermission(true);
       const settings = await Notifications.requestPermissionsAsync();
       setNotificationPermissionRaw(settings.status);
+      await persistProfileState(undefined, { syncAfterSave: false });
     } catch {
       setNotificationPermissionRaw('undetermined');
     } finally {
@@ -202,25 +319,18 @@ export default function ProfileScreen() {
     await openNotificationSettings();
   };
 
-  const persistProfileName = async () => {
-    const trimmedName = profile.name.trim();
-    const nextName = trimmedName || workoutData.userProfile?.name || 'あなた';
+  const handlePersistProfileName = async () => {
+    if (isPersistingNameRef.current) {
+      return;
+    }
 
+    isPersistingNameRef.current = true;
     setIsNameEditing(false);
-    setProfile((prev) => ({ ...prev, name: nextName }));
-    workoutData.setUserProfile({ name: nextName });
 
     try {
-      await saveProfileToBackend({
-        name: nextName,
-        age: workoutData.userProfile.age,
-        height: workoutData.userProfile.height,
-        weight: workoutData.userProfile.weight,
-        bodyFat: workoutData.userProfile.bodyFat,
-      });
-      await syncWorkoutData();
-    } catch {
-      setProfile((prev) => ({ ...prev, name: workoutData.userProfile?.name || nextName }));
+      await persistProfileState();
+    } finally {
+      isPersistingNameRef.current = false;
     }
   };
 
@@ -243,18 +353,28 @@ export default function ProfileScreen() {
 
           <View style={styles.nameContainer}>
             {isNameEditing ? (
-              <TextInput
-                style={[styles.nameInput, { color: theme, borderBottomColor: theme }]}
-                value={profile.name}
-                onChangeText={(val) => setProfile({ ...profile, name: val })}
-                onBlur={() => {
-                  void persistProfileName();
-                }}
-                onSubmitEditing={() => {
-                  void persistProfileName();
-                }}
-                autoFocus
-              />
+              <>
+                <TextInput
+                  style={[styles.nameInput, { color: theme, borderBottomColor: theme }]}
+                  value={profile.name}
+                  onChangeText={(val) => setProfile((prev) => ({ ...prev, name: val }))}
+                  onBlur={() => {
+                    void handlePersistProfileName();
+                  }}
+                  onEndEditing={() => {
+                    void handlePersistProfileName();
+                  }}
+                  onSubmitEditing={() => {
+                    void handlePersistProfileName();
+                  }}
+                  returnKeyType="done"
+                  blurOnSubmit
+                  autoFocus
+                />
+                <TouchableOpacity onPress={() => void handlePersistProfileName()} style={styles.editNameBtn}>
+                  <Ionicons name="checkmark" size={20} color={theme} />
+                </TouchableOpacity>
+              </>
             ) : (
               <>
                 <Text style={styles.userName}>{profile.name}</Text>
@@ -270,7 +390,7 @@ export default function ProfileScreen() {
             onPress={() => setShowBadgeModal(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.rankText}>{workoutData.equippedBadge}</Text>
+            <Text style={styles.rankText}>{profile.rank}</Text>
             <Ionicons name="chevron-down" size={12} color="#D4AF37" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
@@ -282,20 +402,7 @@ export default function ProfileScreen() {
               onPress={() => {
                 const nextEditing = !isEditing;
                 if (isEditing) {
-                  workoutData.setUserProfile({
-                    name: profile.name,
-                    height: profile.height,
-                    weight: profile.weight,
-                    bodyFat: profile.bodyFat,
-                  });
-                  saveProfileToBackend({
-                    name: profile.name,
-                    height: profile.height,
-                    weight: profile.weight,
-                    bodyFat: profile.bodyFat,
-                  })
-                    .then(() => syncWorkoutData())
-                    .catch(() => {});
+                  void persistProfileState();
                 }
                 setIsEditing(nextEditing);
               }}
@@ -305,9 +412,9 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.statusRow}>
-            <StatusItem label="身長" value={profile.height} unit="cm" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile({ ...profile, height: val })} />
-            <StatusItem label="体重" value={profile.weight} unit="kg" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile({ ...profile, weight: val })} />
-            <StatusItem label="体脂肪" value={profile.bodyFat} unit="%" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile({ ...profile, bodyFat: val })} />
+            <StatusItem label="身長" value={profile.height} unit="cm" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile((prev) => ({ ...prev, height: val }))} />
+            <StatusItem label="体重" value={profile.weight} unit="kg" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile((prev) => ({ ...prev, weight: val }))} />
+            <StatusItem label="体脂肪" value={profile.bodyFat} unit="%" isEditing={isEditing} themeColor={theme} onChange={(val) => setProfile((prev) => ({ ...prev, bodyFat: val }))} />
           </View>
         </View>
 
@@ -345,7 +452,7 @@ export default function ProfileScreen() {
               keyExtractor={(item, index) => item.id + index}
               renderItem={({ item }) => {
                 const isRareItem = item.id === 'streak_30' || item.id === 'time_500';
-                const isSelected = workoutData.equippedBadge === `${item.icon} ${item.name}`;
+                const isSelected = profile.rank === `${item.icon} ${item.name}`;
 
                 return (
                   <TouchableOpacity style={styles.badgeItem} onPress={() => handleSelectBadge(item.icon, item.name)}>
@@ -383,7 +490,7 @@ export default function ProfileScreen() {
                 <Text style={styles.settingSubLabel}>タイマーや実績表示のタイミングで振動します</Text>
               </View>
               <Switch
-                trackColor={{ false: '#767577', true: theme + '80' }}
+                trackColor={{ false: '#767577', true: `${theme}80` }}
                 thumbColor={vibeEnabled ? theme : '#f4f3f4'}
                 onValueChange={toggleVibe}
                 value={vibeEnabled}
@@ -402,7 +509,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               <Switch
-                trackColor={{ false: '#767577', true: theme + '80' }}
+                trackColor={{ false: '#767577', true: `${theme}80` }}
                 thumbColor={notificationPermissionRaw === 'granted' ? theme : '#f4f3f4'}
                 onValueChange={(value) => {
                   void handleNotificationPermissionSwitch(value);
@@ -430,7 +537,7 @@ export default function ProfileScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               {helpGuideData.map((item) => (
                 <View key={item.id} style={styles.helpListItem}>
-                  <View style={[styles.helpIconContainer, { backgroundColor: theme + '15' }]}>
+                  <View style={[styles.helpIconContainer, { backgroundColor: `${theme}15` }]}>
                     <Ionicons name={item.icon as any} size={28} color={theme} />
                   </View>
                   <View style={styles.helpTextContainer}>

@@ -13,7 +13,7 @@ export async function playSwitchSound() {
 });
     // assetsフォルダのパスを正しく指定します
     const { sound } = await Audio.Sound.createAsync(
-       require('@/assets/beep.mp3') 
+       require('@/assets/images/beep.mp3') 
     );
 
     // 他のアプリ（音楽など）を邪魔しないための設定

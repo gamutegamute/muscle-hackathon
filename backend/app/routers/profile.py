@@ -34,6 +34,10 @@ def create_profile(profile: ProfileCreate):
         "weight": data["weight"],
         "bodyFat": data["bodyFat"],
         "expoPushToken": data.get("expoPushToken"),
+        "avatar": data.get("avatar"),
+        "themeColor": data.get("themeColor"),
+        "equippedBadge": data.get("equippedBadge"),
+        "isVibrationEnabled": data.get("isVibrationEnabled"),
         "createdAt": datetime.utcnow(),
     }
 
@@ -59,7 +63,7 @@ def update_profile(user_id: str, profile: ProfileUpdate):
     if not existing_user:
         raise HTTPException(status_code=404, detail="user not found")
 
-    update_data = profile.model_dump(exclude_none=True)
+    update_data = profile.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="no profile fields to update")
 

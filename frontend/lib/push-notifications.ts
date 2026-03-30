@@ -21,21 +21,25 @@ function getProjectId() {
   );
 }
 
-export async function getExpoPushToken() {
+export async function getExpoPushToken(options?: { requestPermissionIfNeeded?: boolean }) {
   if (!Device.isDevice) {
     return undefined;
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
+  const requestPermissionIfNeeded = options?.requestPermissionIfNeeded ?? false;
 
   if (existingStatus !== 'granted') {
+    if (!requestPermissionIfNeeded) {
+      return null;
+    }
     const permissionResponse = await Notifications.requestPermissionsAsync();
     finalStatus = permissionResponse.status;
   }
 
   if (finalStatus !== 'granted') {
-    return undefined;
+    return null;
   }
 
   if (Platform.OS === 'android') {
