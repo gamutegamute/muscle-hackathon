@@ -96,6 +96,12 @@ export default function ProfileScreen() {
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
   const isPersistingNameRef = useRef(false);
+  const profileRef = useRef<ProfileState>(getInitialProfileState());
+  const lastNotificationStatusRef = useRef<Notifications.PermissionStatus | 'undetermined'>('undetermined');
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     const unsubscribe = workoutData.subscribeColor((newColor: string) => {
@@ -226,18 +232,38 @@ export default function ProfileScreen() {
     }
   };
 
-  const syncNotificationPermissionState = useCallback(async () => {
+  const syncNotificationPermissionState = useCallback(async (options?: { syncIfChanged?: boolean }) => {
     try {
       setIsCheckingNotificationPermission(true);
       const settings = await Notifications.getPermissionsAsync();
-      setNotificationPermissionRaw(settings.status);
-      await persistProfileState(undefined, { syncAfterSave: false });
+      const nextStatus = settings.status;
+      const previousStatus = lastNotificationStatusRef.current;
+
+      setNotificationPermissionRaw(nextStatus);
+      lastNotificationStatusRef.current = nextStatus;
+
+      if (options?.syncIfChanged && previousStatus !== nextStatus) {
+        const currentProfile = profileRef.current;
+        const nextName = currentProfile.name.trim() || workoutData.userProfile?.name || 'あなた';
+
+        await saveProfileToBackend({
+          name: nextName,
+          age: workoutData.userProfile.age,
+          height: currentProfile.height,
+          weight: currentProfile.weight,
+          bodyFat: currentProfile.bodyFat,
+          avatar: currentProfile.avatar,
+          themeColor: workoutData.themeColor,
+          equippedBadge: currentProfile.rank,
+          isVibrationEnabled: workoutData.isVibrationEnabled,
+        });
+      }
     } catch {
       setNotificationPermissionRaw('undetermined');
     } finally {
       setIsCheckingNotificationPermission(false);
     }
-  }, [profile]);
+  }, []);
 
   useEffect(() => {
     if (!showNotifyModal) return;
@@ -245,7 +271,7 @@ export default function ProfileScreen() {
     void syncNotificationPermissionState();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void syncNotificationPermissionState();
+        void syncNotificationPermissionState({ syncIfChanged: true });
       }
     });
 
@@ -296,8 +322,28 @@ export default function ProfileScreen() {
     try {
       setIsCheckingNotificationPermission(true);
       const settings = await Notifications.requestPermissionsAsync();
-      setNotificationPermissionRaw(settings.status);
-      await persistProfileState(undefined, { syncAfterSave: false });
+      const nextStatus = settings.status;
+      const previousStatus = lastNotificationStatusRef.current;
+
+      setNotificationPermissionRaw(nextStatus);
+      lastNotificationStatusRef.current = nextStatus;
+
+      if (previousStatus !== nextStatus) {
+        const currentProfile = profileRef.current;
+        const nextName = currentProfile.name.trim() || workoutData.userProfile?.name || 'あなた';
+
+        await saveProfileToBackend({
+          name: nextName,
+          age: workoutData.userProfile.age,
+          height: currentProfile.height,
+          weight: currentProfile.weight,
+          bodyFat: currentProfile.bodyFat,
+          avatar: currentProfile.avatar,
+          themeColor: workoutData.themeColor,
+          equippedBadge: currentProfile.rank,
+          isVibrationEnabled: workoutData.isVibrationEnabled,
+        });
+      }
     } catch {
       setNotificationPermissionRaw('undetermined');
     } finally {
