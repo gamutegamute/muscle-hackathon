@@ -8,6 +8,10 @@ export type ApiProfile = {
   weight?: number | null;
   bodyFat?: number | null;
   expoPushToken?: string | null;
+  avatar?: string | null;
+  themeColor?: string | null;
+  equippedBadge?: string | null;
+  isVibrationEnabled?: boolean | null;
 };
 
 export type ApiRecord = {
@@ -114,6 +118,10 @@ export async function upsertProfile(profile: ApiProfile) {
       weight: profile.weight,
       bodyFat: profile.bodyFat,
       expoPushToken: profile.expoPushToken,
+      avatar: profile.avatar,
+      themeColor: profile.themeColor,
+      equippedBadge: profile.equippedBadge,
+      isVibrationEnabled: profile.isVibrationEnabled,
     });
   } catch {
     return createProfile(profile);

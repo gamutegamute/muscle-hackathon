@@ -54,6 +54,15 @@ export async function syncWorkoutData(options?: { showAlert?: boolean }) {
 
     try {
       const profile = await getProfile(userId);
+      if (profile.themeColor) {
+        workoutData.setThemeColor(profile.themeColor);
+      }
+      if (typeof profile.isVibrationEnabled === 'boolean') {
+        workoutData.setVibrationEnabled(profile.isVibrationEnabled);
+      }
+      if (profile.equippedBadge) {
+        workoutData.equippedBadge = profile.equippedBadge;
+      }
       workoutData.setUserProfile({
         userId: profile.userId,
         name: profile.name ?? workoutData.userProfile.name,
@@ -61,6 +70,7 @@ export async function syncWorkoutData(options?: { showAlert?: boolean }) {
         height: profile.height != null ? String(profile.height) : workoutData.userProfile.height,
         weight: profile.weight != null ? String(profile.weight) : workoutData.userProfile.weight,
         bodyFat: profile.bodyFat != null ? String(profile.bodyFat) : workoutData.userProfile.bodyFat,
+        avatar: profile.avatar ?? workoutData.userProfile.avatar,
       });
     } catch {
       // プロフィール未作成は許容
@@ -85,12 +95,18 @@ export async function saveProfileToBackend(profile: {
   height?: string;
   weight?: string;
   bodyFat?: string;
-}) {
+  avatar?: string | null;
+  themeColor?: string | null;
+  equippedBadge?: string | null;
+  isVibrationEnabled?: boolean;
+}, options?: { requestNotificationPermission?: boolean }) {
   const userId = workoutData.getUserId();
-  let expoPushToken: string | undefined;
+  let expoPushToken: string | null | undefined;
 
   try {
-    expoPushToken = await getExpoPushToken();
+    expoPushToken = await getExpoPushToken({
+      requestPermissionIfNeeded: options?.requestNotificationPermission ?? false,
+    });
   } catch (error) {
     console.warn('Failed to get Expo push token:', error);
   }
@@ -103,6 +119,10 @@ export async function saveProfileToBackend(profile: {
     weight: profile.weight ? Number(profile.weight) : undefined,
     bodyFat: profile.bodyFat ? Number(profile.bodyFat) : undefined,
     expoPushToken,
+    avatar: profile.avatar ?? workoutData.userProfile.avatar,
+    themeColor: profile.themeColor ?? workoutData.themeColor,
+    equippedBadge: profile.equippedBadge ?? workoutData.equippedBadge,
+    isVibrationEnabled: profile.isVibrationEnabled ?? workoutData.isVibrationEnabled,
   });
 
   workoutData.setUserProfile({
@@ -112,7 +132,17 @@ export async function saveProfileToBackend(profile: {
     height: profile.height ?? workoutData.userProfile.height,
     weight: profile.weight ?? workoutData.userProfile.weight,
     bodyFat: profile.bodyFat ?? workoutData.userProfile.bodyFat,
+    avatar: profile.avatar ?? workoutData.userProfile.avatar,
   });
+  if (profile.themeColor) {
+    workoutData.setThemeColor(profile.themeColor);
+  }
+  if (profile.equippedBadge) {
+    workoutData.equippedBadge = profile.equippedBadge;
+  }
+  if (typeof profile.isVibrationEnabled === 'boolean') {
+    workoutData.setVibrationEnabled(profile.isVibrationEnabled);
+  }
 }
 
 export async function saveRecordToBackend(input: {
@@ -122,12 +152,12 @@ export async function saveRecordToBackend(input: {
   menu: string;
   memo: string;
   count: number;
-  minutes: number;
+  durationSeconds: number;
   interval?: number;
   rounds?: number;
 }) {
   const userId = workoutData.getUserId();
-  const durationSeconds = Math.max(0, input.minutes) * 60;
+  const durationSeconds = Math.max(0, input.durationSeconds);
   const normalizedDate = input.dateStr.replace(/\//g, '-');
   const normalizedTime = input.timeStr || '00:00';
   const createdAt = `${normalizedDate}T${normalizedTime}:00+09:00`;

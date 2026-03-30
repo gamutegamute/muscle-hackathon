@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+
 import { workoutData } from '../globalState';
 import { saveRecordToBackend, syncWorkoutData } from '@/lib/workout-sync';
 import { playSwitchSound } from '@/lib/sound';
@@ -29,13 +30,12 @@ const COLORS = {
   accentBlue: '#2196F3',
 };
 
-const ITEM_WIDTH = 45; 
+const ITEM_WIDTH = 45;
 const NUMBER_DATA = Array.from({ length: 101 }, (_, i) => i);
 const SET_DATA = Array.from({ length: 21 }, (_, i) => i);
 const SEC_DATA = Array.from({ length: 60 }, (_, i) => i);
 
-// --- FastStepper の修正：型エラーを回避 ---
-const FastStepper = ({ label, value, onUpdate, min = 0, max = 99, unit = "" }: any) => {
+const FastStepper = ({ label, value, onUpdate, min = 0, max = 99, unit = '' }: any) => {
   const timerRef = useRef<any>(null);
 
   const startAdjust = (delta: number) => {
@@ -64,26 +64,16 @@ const FastStepper = ({ label, value, onUpdate, min = 0, max = 99, unit = "" }: a
 
   return (
     <View style={styles.stepperContainer}>
-      {label !== "" && <Text style={styles.stepperLabel}>{label}</Text>}
+      {label !== '' && <Text style={styles.stepperLabel}>{label}</Text>}
       <View style={styles.stepperRow}>
-        <TouchableOpacity 
-          style={styles.stepBtn} 
-          onPressIn={() => startAdjust(-1)} 
-          onPressOut={stopAdjust}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.stepBtn} onPressIn={() => startAdjust(-1)} onPressOut={stopAdjust} activeOpacity={0.7}>
           <Ionicons name="remove" size={20} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.valueBox}>
           <Text style={styles.valueText}>{String(value).padStart(2, '0')}</Text>
-          {unit !== "" && <Text style={styles.unitText}>{unit}</Text>}
+          {unit !== '' && <Text style={styles.unitText}>{unit}</Text>}
         </View>
-        <TouchableOpacity 
-          style={styles.stepBtn} 
-          onPressIn={() => startAdjust(1)} 
-          onPressOut={stopAdjust}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.stepBtn} onPressIn={() => startAdjust(1)} onPressOut={stopAdjust} activeOpacity={0.7}>
           <Ionicons name="add" size={20} color={COLORS.text} />
         </TouchableOpacity>
       </View>
@@ -91,14 +81,13 @@ const FastStepper = ({ label, value, onUpdate, min = 0, max = 99, unit = "" }: a
   );
 };
 
-// --- WorkoutPicker ---
 const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme }: any) => {
   const [pickerWidth, setPickerWidth] = useState(0);
   const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
 
   return (
     <View style={styles.pickerWrapper} onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}>
-      <View style={[styles.centerIndicator, { borderColor: theme, backgroundColor: theme + '15' }]} pointerEvents="none" />
+      <View style={[styles.centerIndicator, { borderColor: theme, backgroundColor: `${theme}15` }]} pointerEvents="none" />
       {pickerWidth > 0 && (
         <FlatList
           ref={pickerRef}
@@ -127,7 +116,6 @@ const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme
 });
 WorkoutPicker.displayName = 'WorkoutPicker';
 
-// --- メイン画面 ---
 export default function DetailedRecordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -147,22 +135,13 @@ export default function DetailedRecordScreen() {
   useFocusEffect(
     useCallback(() => {
       setTheme(workoutData.themeColor);
-    }, [])
+    }, []),
   );
 
   const [activeTab, setActiveTab] = useState('input');
-  const getToday = () => {
-    const now = new Date();
-    return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
-  };
-  const getTime = () => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  };
-
   const [menu, setMenu] = useState('');
   const [dateStr, setDateStr] = useState(getToday());
-  const [timeStr, setTimeStr] = useState(getTime()); 
+  const [timeStr, setTimeStr] = useState(getTime());
   const [memo, setMemo] = useState('');
   const [count, setCount] = useState(10);
   const [sets, setSets] = useState(3);
@@ -178,14 +157,46 @@ export default function DetailedRecordScreen() {
   const [currentRound, setCurrentRound] = useState(1);
   const [timeLeft, setTimeLeft] = useState(0);
   const [swTime, setSwTime] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   const countRef = useRef<FlatList>(null);
   const setsRef = useRef<FlatList>(null);
-  const minsRef = useRef<FlatList>(null); 
+  const minsRef = useRef<FlatList>(null);
   const secsRef = useRef<FlatList>(null);
   const timerRef = useRef<any>(null);
   const swRef = useRef<any>(null);
-  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!paramMenu) return;
+
+    const nextCount = Number(paramCount) || 10;
+    const nextSets = Number(paramSets) || 3;
+    const nextMins = Number(paramMins) || 0;
+    const nextSecs = Number(paramSecs) || 30;
+
+    setMenu(paramMenu);
+    setMemo(paramMemo);
+    if (paramDateStr) {
+      setDateStr(paramDateStr);
+    }
+    if (paramTimeStr) {
+      setTimeStr(paramTimeStr);
+    }
+    setCount(nextCount);
+    setSets(nextSets);
+    setRounds(nextSets);
+    setMins(nextMins);
+    setSecs(nextSecs);
+    setWorkMin(nextMins);
+    setWorkSec(nextSecs);
+
+    setTimeout(() => {
+      countRef.current?.scrollToIndex({ index: nextCount, animated: true });
+      setsRef.current?.scrollToIndex({ index: nextSets, animated: true });
+      minsRef.current?.scrollToIndex({ index: nextMins, animated: true });
+      secsRef.current?.scrollToIndex({ index: nextSecs, animated: true });
+    }, 300);
+  }, [paramCount, paramDateStr, paramMemo, paramMenu, paramMins, paramSecs, paramSets, paramTimeStr]);
 
   const handleSetCurrentTime = () => {
     setDateStr(getToday());
@@ -200,7 +211,8 @@ export default function DetailedRecordScreen() {
         const month = parseInt(parts[1], 10) - 1;
         const day = parseInt(parts[2], 10);
         const current = new Date(year, month, day);
-        if (!isNaN(current.getTime())) {
+
+        if (!Number.isNaN(current.getTime())) {
           current.setDate(current.getDate() + days);
           const y = current.getFullYear();
           const m = String(current.getMonth() + 1).padStart(2, '0');
@@ -208,46 +220,23 @@ export default function DetailedRecordScreen() {
           setDateStr(`${y}/${m}/${d}`);
         }
       }
-    } catch { console.log("日付調整失敗"); }
+    } catch {
+      console.log('日付調整失敗');
+    }
   };
 
-  useEffect(() => {
-    if (paramMenu) {
-      const c = Number(paramCount) || 10;
-      const s = Number(paramSets) || 3;
-      const m = Number(paramMins) || 0;
-      const sec = Number(paramSecs) || 30;
+  const getPlannedTimerDurationSeconds = () => {
+    const workDuration = workMin * 60 + workSec;
+    const restDuration = restMin * 60 + restSec;
+    return workDuration * rounds + restDuration * Math.max(rounds - 1, 0);
+  };
 
-      setMenu(paramMenu);
-      setMemo(paramMemo);
-      if (paramDateStr) {
-        setDateStr(paramDateStr);
-      }
-      if (paramTimeStr) {
-        setTimeStr(paramTimeStr);
-      }
-      setCount(c);
-      setSets(s);
-      setRounds(s);
-      setMins(m);
-      setSecs(sec);
-      setWorkMin(m);
-      setWorkSec(sec);
-
-      setTimeout(() => {
-        countRef.current?.scrollToIndex({ index: c, animated: true });
-        setsRef.current?.scrollToIndex({ index: s, animated: true });
-        minsRef.current?.scrollToIndex({ index: m, animated: true });
-        secsRef.current?.scrollToIndex({ index: sec, animated: true });
-      }, 300);
-    }
-  }, [paramCount, paramDateStr, paramMemo, paramMenu, paramMins, paramSecs, paramSets, paramTimeStr]);
-
-  const validateAndSave = async (finalMins: number) => {
+  const validateAndSave = async (finalDurationSeconds: number) => {
     if (!menu.trim()) {
-      Alert.alert('メニューが未入力です','AIに相談してみますか？',
-        [{ text: '自分で入力する', style: 'cancel' }, { text: 'AIに相談する 🤖', onPress: () => router.push('/ai') }]
-      );
+      Alert.alert('メニューが未入力です', 'AIに相談してみますか？', [
+        { text: '自分で入力する', style: 'cancel' },
+        { text: 'AIに相談する', onPress: () => router.push('/ai') },
+      ]);
       return;
     }
 
@@ -261,7 +250,7 @@ export default function DetailedRecordScreen() {
         menu: menu.trim(),
         memo,
         count,
-        minutes: finalMins || 1,
+        durationSeconds: Math.max(1, finalDurationSeconds),
         interval: restMin * 60 + restSec,
         rounds: activeTab === 'input' ? sets : rounds,
       });
@@ -276,15 +265,19 @@ export default function DetailedRecordScreen() {
   const startTimer = () => {
     const total = workMin * 60 + workSec;
     if (total === 0) return;
-    setIsRunning(true); setPhase('WORK'); setTimeLeft(total); setCurrentRound(1);
+
+    setIsRunning(true);
+    setPhase('WORK');
+    setTimeLeft(total);
+    setCurrentRound(1);
   };
 
   useEffect(() => {
     if (isRunning && activeTab === 'timer' && timeLeft > 0) {
-      timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
+      timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (isRunning && activeTab === 'timer' && timeLeft === 0) {
       playSwitchSound();
-      
+
       if (workoutData.isVibrationEnabled) {
         if (phase === 'WORK') {
           Vibration.vibrate([0, 400, 200, 400]);
@@ -294,36 +287,46 @@ export default function DetailedRecordScreen() {
       }
 
       if (phase === 'WORK') {
-        if (currentRound < rounds) { setPhase('REST'); setTimeLeft(restMin * 60 + restSec); }
-        else { setIsRunning(false); setPhase('FINISH'); }
+        if (currentRound < rounds) {
+          setPhase('REST');
+          setTimeLeft(restMin * 60 + restSec);
+        } else {
+          setIsRunning(false);
+          setPhase('FINISH');
+        }
       } else if (phase === 'REST') {
-        setCurrentRound(r => r + 1); setPhase('WORK'); setTimeLeft(workMin * 60 + workSec);
+        setCurrentRound((prev) => prev + 1);
+        setPhase('WORK');
+        setTimeLeft(workMin * 60 + workSec);
       }
     }
+
     return () => clearInterval(timerRef.current);
   }, [activeTab, currentRound, isRunning, phase, restMin, restSec, rounds, timeLeft, workMin, workSec]);
 
   useEffect(() => {
     if (isRunning && activeTab === 'stopwatch') {
-      swRef.current = setInterval(() => setSwTime(t => t + 1), 1000);
-    } else { clearInterval(swRef.current); }
+      swRef.current = setInterval(() => setSwTime((prev) => prev + 1), 1000);
+    } else {
+      clearInterval(swRef.current);
+    }
+
     return () => clearInterval(swRef.current);
   }, [isRunning, activeTab]);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ★ 修正ポイント: behavior を Platform で出し分け、Androidは undefined (OSに任せる) にするのが最も安定します */}
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={0}
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>記録</Text>
           {activeTab === 'input' && (
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: theme, opacity: isSaving ? 0.7 : 1 }]}
-              onPress={() => validateAndSave(mins + (secs > 0 ? 1 : 0))}
+              onPress={() => validateAndSave(mins * 60 + secs)}
               disabled={isSaving}
             >
               <Text style={styles.saveBtnText}>{isSaving ? '保存中' : isEditMode ? '更新' : '保存'}</Text>
@@ -331,9 +334,9 @@ export default function DetailedRecordScreen() {
           )}
         </View>
 
-        <ScrollView 
-          ref={scrollRef} 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -341,46 +344,78 @@ export default function DetailedRecordScreen() {
             <View style={styles.dateTimeRow}>
               <View style={styles.dateControlGroup}>
                 <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
-                    <Text style={[styles.adjustBtnText, { color: theme }]}>－</Text>
+                  <Text style={[styles.adjustBtnText, { color: theme }]}>-</Text>
                 </TouchableOpacity>
-                <View style={styles.dateBadge}><TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" /></View>
+                <View style={styles.dateBadge}>
+                  <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
+                </View>
                 <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
-                    <Text style={[styles.adjustBtnText, { color: theme }]}>＋</Text>
+                  <Text style={[styles.adjustBtnText, { color: theme }]}>+</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.dateBadge}><TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" /></View>
+              <View style={styles.dateBadge}>
+                <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
+              </View>
               <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
-                  <Text style={styles.currentBtnText}>現在</Text>
+                <Text style={styles.currentBtnText}>現在</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.tabContainer}>
-            {['input', 'timer', 'stopwatch'].map((t) => (
-              <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.activeTab]} onPress={() => { setActiveTab(t); setIsRunning(false); setPhase('IDLE'); }}>
-                <Text style={[styles.tabText, activeTab === t && styles.activeTabText]}>
-                  {t === 'input' ? '手動入力' : t === 'timer' ? 'タイマー' : 'ストップウォッチ'}
+            {['input', 'timer', 'stopwatch'].map((tabKey) => (
+              <TouchableOpacity
+                key={tabKey}
+                style={[styles.tab, activeTab === tabKey && styles.activeTab]}
+                onPress={() => {
+                  setActiveTab(tabKey);
+                  setIsRunning(false);
+                  setPhase('IDLE');
+                }}
+              >
+                <Text style={[styles.tabText, activeTab === tabKey && styles.activeTabText]}>
+                  {tabKey === 'input' ? '手動入力' : tabKey === 'timer' ? 'タイマー' : 'ストップウォッチ'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <TextInput style={styles.menuInput} placeholder="メニュー名（例：スクワット）" placeholderTextColor={COLORS.grayText} value={menu} onChangeText={setMenu} />
+          <TextInput
+            style={styles.menuInput}
+            placeholder="メニュー名（例: スクワット）"
+            placeholderTextColor={COLORS.grayText}
+            value={menu}
+            onChangeText={setMenu}
+          />
 
           {activeTab === 'input' ? (
             <View>
               <View style={styles.row}>
-                <View style={styles.half}><Text style={styles.label}>回数: <Text style={[styles.highlight, { color: theme }]}>{count}</Text></Text>
-                <WorkoutPicker data={NUMBER_DATA} currentVal={count} onSelect={setCount} pickerRef={countRef} theme={theme} /></View>
-                <View style={styles.half}><Text style={styles.label}>セット: <Text style={[styles.highlight, { color: theme }]}>{sets}</Text></Text>
-                <WorkoutPicker data={SET_DATA} currentVal={sets} onSelect={setSets} pickerRef={setsRef} theme={theme} /></View>
+                <View style={styles.half}>
+                  <Text style={styles.label}>
+                    回数: <Text style={[styles.highlight, { color: theme }]}>{count}</Text>
+                  </Text>
+                  <WorkoutPicker data={NUMBER_DATA} currentVal={count} onSelect={setCount} pickerRef={countRef} theme={theme} />
+                </View>
+                <View style={styles.half}>
+                  <Text style={styles.label}>
+                    セット: <Text style={[styles.highlight, { color: theme }]}>{sets}</Text>
+                  </Text>
+                  <WorkoutPicker data={SET_DATA} currentVal={sets} onSelect={setSets} pickerRef={setsRef} theme={theme} />
+                </View>
               </View>
               <View style={styles.timeSection}>
-                <Text style={styles.label}>時間: <Text style={[styles.highlight, { color: theme }]}>{mins}分 {secs}秒</Text></Text>
+                <Text style={styles.label}>
+                  時間: <Text style={[styles.highlight, { color: theme }]}>{mins}分 {secs}秒</Text>
+                </Text>
                 <View style={styles.timePickers}>
-                  <View style={{flex:1}}><WorkoutPicker data={NUMBER_DATA} currentVal={mins} onSelect={setMins} pickerRef={minsRef} theme={theme} /></View>
+                  <View style={{ flex: 1 }}>
+                    <WorkoutPicker data={NUMBER_DATA} currentVal={mins} onSelect={setMins} pickerRef={minsRef} theme={theme} />
+                  </View>
                   <Text style={styles.timeSeparator}>:</Text>
-                  <View style={{flex:1}}><WorkoutPicker data={SEC_DATA} currentVal={secs} onSelect={setSecs} pickerRef={secsRef} theme={theme} /></View>
+                  <View style={{ flex: 1 }}>
+                    <WorkoutPicker data={SEC_DATA} currentVal={secs} onSelect={setSecs} pickerRef={secsRef} theme={theme} />
+                  </View>
                 </View>
               </View>
             </View>
@@ -388,28 +423,40 @@ export default function DetailedRecordScreen() {
             <View style={styles.card}>
               {phase === 'IDLE' ? (
                 <View>
-                  <FastStepper label="① トレーニング時間" value={workMin} onUpdate={setWorkMin} unit="分" />
+                  <FastStepper label="1. トレーニング時間" value={workMin} onUpdate={setWorkMin} unit="分" />
                   <FastStepper label="" value={workSec} onUpdate={setWorkSec} unit="秒" max={59} />
                   <View style={styles.divider} />
-                  <FastStepper label="② インターバル時間" value={restMin} onUpdate={setRestMin} unit="分" />
+                  <FastStepper label="2. インターバル時間" value={restMin} onUpdate={setRestMin} unit="分" />
                   <FastStepper label="" value={restSec} onUpdate={setRestSec} unit="秒" max={59} />
                   <View style={styles.divider} />
-                  <FastStepper label="③ 周回数" value={rounds} onUpdate={setRounds} min={1} />
-                  <TouchableOpacity style={[styles.startBtn, { backgroundColor: theme }]} onPress={startTimer}><Text style={styles.startBtnText}>スタート 🚀</Text></TouchableOpacity>
+                  <FastStepper label="3. 周回数" value={rounds} onUpdate={setRounds} min={1} />
+                  <TouchableOpacity style={[styles.startBtn, { backgroundColor: theme }]} onPress={startTimer}>
+                    <Text style={styles.startBtnText}>スタート</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.timerDisplayContainer}>
-                  <Text style={[styles.phaseText, { color: theme }]}>{phase === 'WORK' ? '🔥 TRAINING' : phase === 'REST' ? '☕ REST' : '✨ FINISHED'}</Text>
-                  <Text style={styles.timeLeftText}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</Text>
+                  <Text style={[styles.phaseText, { color: theme }]}>
+                    {phase === 'WORK' ? 'TRAINING' : phase === 'REST' ? 'REST' : 'FINISHED'}
+                  </Text>
+                  <Text style={styles.timeLeftText}>
+                    {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                  </Text>
                   <Text style={styles.roundText}>{currentRound} / {rounds} Rounds</Text>
                   <View style={styles.controlRow}>
-                    {phase !== 'FINISH' && <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : theme}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "再開"}</Text></TouchableOpacity>}
-                    <TouchableOpacity style={[styles.controlBtn, {backgroundColor: COLORS.grayBackground}]} onPress={() => { setIsRunning(false); setPhase('IDLE'); }}><Text style={[styles.controlBtnText, {color: COLORS.text}]}>リセット</Text></TouchableOpacity>
+                    {phase !== 'FINISH' && (
+                      <TouchableOpacity style={[styles.controlBtn, { backgroundColor: isRunning ? COLORS.accentBlue : theme }]} onPress={() => setIsRunning(!isRunning)}>
+                        <Text style={styles.controlBtnText}>{isRunning ? '一時停止' : '再開'}</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={[styles.controlBtn, { backgroundColor: COLORS.grayBackground }]} onPress={() => { setIsRunning(false); setPhase('IDLE'); }}>
+                      <Text style={[styles.controlBtnText, { color: COLORS.text }]}>リセット</Text>
+                    </TouchableOpacity>
                   </View>
-                  {!isRunning && (phase === 'FINISH' || timeLeft < (workMin * 60 + workSec)) && (
-                     <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(Math.ceil(((workMin * 60 + workSec) + (restMin * 60 + restSec)) * rounds / 60))}>
-                       <Text style={styles.saveBtnText}>休憩込みの総時間を記録 🏁</Text>
-                     </TouchableOpacity>
+                  {!isRunning && (phase === 'FINISH' || timeLeft < workMin * 60 + workSec) && (
+                    <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(getPlannedTimerDurationSeconds())}>
+                      <Text style={styles.saveBtnText}>休憩込みの総時間を記録</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               )}
@@ -417,23 +464,33 @@ export default function DetailedRecordScreen() {
           ) : (
             <View style={styles.card}>
               <View style={styles.timerDisplayContainer}>
-                <Text style={styles.timeLeftText}>{Math.floor(swTime / 60).toString().padStart(2, '0')}:{(swTime % 60).toString().padStart(2, '0')}</Text>
+                <Text style={styles.timeLeftText}>
+                  {Math.floor(swTime / 60).toString().padStart(2, '0')}:{(swTime % 60).toString().padStart(2, '0')}
+                </Text>
                 <View style={styles.controlRow}>
-                  <TouchableOpacity style={[styles.controlBtn, {backgroundColor: isRunning ? COLORS.accentBlue : theme}]} onPress={() => setIsRunning(!isRunning)}><Text style={styles.controlBtnText}>{isRunning ? "一時停止" : "計測スタート"}</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.controlBtn, {backgroundColor: COLORS.grayBackground}]} onPress={() => { setIsRunning(false); setSwTime(0); }}><Text style={[styles.controlBtnText, {color: COLORS.text}]}>リセット</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.controlBtn, { backgroundColor: isRunning ? COLORS.accentBlue : theme }]} onPress={() => setIsRunning(!isRunning)}>
+                    <Text style={styles.controlBtnText}>{isRunning ? '一時停止' : '計測スタート'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.controlBtn, { backgroundColor: COLORS.grayBackground }]} onPress={() => { setIsRunning(false); setSwTime(0); }}>
+                    <Text style={[styles.controlBtnText, { color: COLORS.text }]}>リセット</Text>
+                  </TouchableOpacity>
                 </View>
-                {!isRunning && swTime > 0 && <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(Math.max(1, Math.ceil(swTime / 60)))}><Text style={styles.saveBtnText}>この記録を保存する 🏁</Text></TouchableOpacity>}
+                {!isRunning && swTime > 0 && (
+                  <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(swTime)}>
+                    <Text style={styles.saveBtnText}>この記録を保存する</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
 
-          <Text style={[styles.label, {marginTop: 25}]}>メモ</Text>
-          <TextInput 
-            style={styles.memoInput} 
-            placeholder="今日の気づきを入力..." 
-            placeholderTextColor={COLORS.grayText} 
-            multiline 
-            value={memo} 
+          <Text style={[styles.label, { marginTop: 25 }]}>メモ</Text>
+          <TextInput
+            style={styles.memoInput}
+            placeholder="今日の気づきを入力..."
+            placeholderTextColor={COLORS.grayText}
+            multiline
+            value={memo}
             onChangeText={setMemo}
             onFocus={() => {
               setTimeout(() => {
@@ -449,6 +506,16 @@ export default function DetailedRecordScreen() {
   );
 }
 
+function getToday() {
+  const now = new Date();
+  return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function getTime() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
@@ -458,18 +525,18 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   dateTimeRow: { flexDirection: 'row', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
   dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  dateBadge: { 
-    backgroundColor: COLORS.white, 
-    paddingVertical: 10, 
-    paddingHorizontal: 8, 
-    borderRadius: 12, 
-    borderWidth: 1, 
+  dateBadge: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: '#DDD',
     minWidth: 100,
-    height: 45, 
-    justifyContent: 'center'
+    height: 45,
+    justifyContent: 'center',
   },
-  dateText: { fontSize: 13, color: COLORS.text, padding: 0, textAlign: 'center', height: 20 }, 
+  dateText: { fontSize: 13, color: COLORS.text, padding: 0, textAlign: 'center', height: 20 },
   adjustBtn: { backgroundColor: COLORS.white, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   adjustBtnText: { fontSize: 18, fontWeight: 'bold' },
   currentBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
@@ -485,7 +552,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
   highlight: { fontSize: 18, fontWeight: 'bold' },
   pickerWrapper: { height: 60, backgroundColor: COLORS.white, borderRadius: 15, justifyContent: 'center', position: 'relative', overflow: 'hidden' },
-  centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH/2, width: ITEM_WIDTH, height: 45, borderRadius: 10, borderWidth: 2, zIndex: 10 },
+  centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH / 2, width: ITEM_WIDTH, height: 45, borderRadius: 10, borderWidth: 2, zIndex: 10 },
   numberItem: { width: ITEM_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' },
   numberText: { fontSize: 16, color: COLORS.grayText },
   activeNumberText: { fontSize: 22, fontWeight: 'bold' },

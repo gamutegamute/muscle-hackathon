@@ -12,3 +12,7 @@ class ProfileCreate(CamelModel):
     weight: Optional[float] = Field(default=None, ge=0, le=500)
     bodyFat: Optional[float] = Field(default=None, ge=0, le=100)
     expoPushToken: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    avatar: Optional[str] = Field(default=None, max_length=2048)
+    themeColor: Optional[str] = Field(default=None, max_length=20)
+    equippedBadge: Optional[str] = Field(default=None, max_length=100)
+    isVibrationEnabled: Optional[bool] = Field(default=None)
