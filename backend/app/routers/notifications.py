@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import random
+import time
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -70,7 +71,7 @@ def ensure_push_sdk():
 def send_push_message(*, expo_push_token: str, title: str, body: str, data: dict | None = None):
     ensure_push_sdk()
     push_client = PushClient()
-    push_client.publish(
+    ticket = push_client.publish(
         PushMessage(
             to=expo_push_token,
             title=title,
@@ -79,6 +80,47 @@ def send_push_message(*, expo_push_token: str, title: str, body: str, data: dict
             data=data or {},
         )
     )
+    return {
+        "rawTicket": ticket,
+        "status": ticket.status,
+        "ticketId": ticket.id,
+        "message": ticket.message,
+        "details": ticket.details,
+    }
+
+
+def get_push_receipt(push_ticket, *, retry_count: int = 3, wait_seconds: float = 1.0):
+    ensure_push_sdk()
+    if not push_ticket or not getattr(push_ticket, "id", None):
+        return {
+            "status": "missing_ticket_id",
+            "message": "ticket id was empty",
+            "details": None,
+        }
+
+    push_client = PushClient()
+
+    for attempt in range(retry_count):
+        if attempt > 0:
+            time.sleep(wait_seconds)
+
+        receipts = push_client.check_receipts([push_ticket])
+        if not receipts:
+            continue
+
+        receipt = receipts[0]
+        return {
+            "status": receipt.status,
+            "message": receipt.message,
+            "details": receipt.details,
+            "receiptId": receipt.id,
+        }
+
+    return {
+        "status": "pending",
+        "message": "receipt is not ready yet",
+        "details": None,
+    }
 
 
 def get_days_since_last_activity(last_activity) -> int | None:
@@ -116,19 +158,27 @@ def send_test_notification(user_id: str, payload: TestNotificationRequest):
     if not expo_push_token:
         raise HTTPException(status_code=400, detail="expoPushToken not found for user")
 
-    send_push_message(
+    push_result = send_push_message(
         expo_push_token=expo_push_token,
         title=payload.title,
         body=payload.body,
         data={"type": "test"},
     )
+    receipt_result = get_push_receipt(push_result["rawTicket"])
 
     return {
-        "status": "sent",
+        "status": push_result["status"],
         "userId": user_id,
         "expoPushToken": expo_push_token,
         "title": payload.title,
         "body": payload.body,
+        "ticket": {
+            "status": push_result["status"],
+            "ticketId": push_result["ticketId"],
+            "message": push_result["message"],
+            "details": push_result["details"],
+        },
+        "receipt": receipt_result,
     }
 
 
@@ -154,13 +204,13 @@ def send_reminders():
         selected_message = random.choice(MESSAGES[category])
 
         try:
-            send_push_message(
+            push_result = send_push_message(
                 expo_push_token=expo_push_token,
                 title="筋トレ応援アラート",
                 body=selected_message,
                 data={"days": days, "category": category},
             )
-            status = "sent"
+            status = push_result["status"]
         except Exception as exc:  # pragma: no cover - external SDK
             status = f"error: {exc}"
 
