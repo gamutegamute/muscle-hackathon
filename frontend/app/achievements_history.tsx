@@ -24,7 +24,7 @@ type AchievementItem = {
 const ACHIEVEMENT_ITEMS: AchievementItem[] = [
   {
     id: 'default_0',
-    icon: '🌱',
+    icon: '🥚',
     name: 'はじまりの一歩',
     detail: 'アプリを始めた最初の実績です。',
     conditionText: '条件: アプリを使い始める',

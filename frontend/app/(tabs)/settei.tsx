@@ -69,7 +69,7 @@ function getDefaultName() {
 }
 
 function getDefaultBadge() {
-  return workoutData.equippedBadge || '🌱 はじまりの一歩';
+  return workoutData.equippedBadge || '🥚 はじまりの一歩';
 }
 
 function getInitialProfileState(): ProfileState {
@@ -146,7 +146,7 @@ export default function ProfileScreen() {
   ];
 
   const unlockedBadges = [
-    { id: 'default_0', name: 'はじまりの一歩', icon: '🌱' },
+    { id: 'default_0', name: 'はじまりの一歩', icon: '🥚' },
     ...workoutData.ACHIEVEMENTS.filter((ach: (typeof workoutData.ACHIEVEMENTS)[number]) => workoutData.unlockedAchievements.includes(ach.id)),
   ];
 
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
       weight: nextProfile.weight,
       bodyFat: nextProfile.bodyFat,
       avatar: nextProfile.avatar,
-      equippedBadge: options?.equippedBadge ?? nextProfile.rank ?? workoutData.equippedBadge ?? '🌱 はじまりの一歩',
+      equippedBadge: options?.equippedBadge ?? nextProfile.rank ?? workoutData.equippedBadge ?? '🥚 はじまりの一歩',
       themeColor: options?.themeColor ?? workoutData.themeColor,
       isVibrationEnabled: options?.isVibrationEnabled ?? workoutData.isVibrationEnabled,
     };
@@ -223,7 +223,7 @@ export default function ProfileScreen() {
       setVibeEnabled(previousVibration);
       setProfile({
         name: previousProfile.name || '筋肉太郎',
-        rank: previousBadge || '🌱 はじまりの一歩',
+        rank: previousBadge || '🥚 はじまりの一歩',
         height: previousProfile.height || '170',
         weight: previousProfile.weight || '65.5',
         bodyFat: previousProfile.bodyFat || '18.5',
