@@ -12,6 +12,7 @@ import { syncWorkoutData } from '@/lib/workout-sync';
 WebBrowser.maybeCompleteAuthSession();
 
 const APP_ICON = require('../assets/images/muscloop-logo.png');
+const GOOGLE_ICON = require('../assets/images/google-g.png');
 
 type AuthMode = 'login' | 'signup';
 
@@ -19,6 +20,10 @@ type GoogleLoginButtonProps = {
   disabled: boolean;
   onLoginSuccess: (userId: string) => Promise<void>;
 };
+
+function GoogleIcon() {
+  return <Image source={GOOGLE_ICON} style={styles.googleIconImage} />;
+}
 
 function GoogleLoginButton({ disabled, onLoginSuccess }: GoogleLoginButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +68,7 @@ function GoogleLoginButton({ disabled, onLoginSuccess }: GoogleLoginButtonProps)
       activeOpacity={0.8}
       onPress={() => void promptAsync()}
       disabled={disabled || isSubmitting || !request}>
-      <Text style={styles.googleMark}>G</Text>
+      <GoogleIcon />
       <Text style={styles.googleButtonText}>Googleで続ける</Text>
     </TouchableOpacity>
   );
@@ -211,7 +216,7 @@ export default function App() {
                   'この端末向けの Google client ID がまだ設定されていません。メール/パスワードかゲスト利用を先に使えます。',
                 )
               }>
-              <Text style={styles.googleMark}>G</Text>
+              <GoogleIcon />
               <Text style={styles.googleButtonText}>Googleで続ける</Text>
             </TouchableOpacity>
           )}
@@ -367,10 +372,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  googleMark: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4285f4',
+  googleIconImage: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
   googleButtonText: {
     fontSize: 17,
