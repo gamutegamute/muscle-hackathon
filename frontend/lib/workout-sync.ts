@@ -37,6 +37,8 @@ export function getApiConnectionHelpMessage() {
 
 export async function syncWorkoutData(options?: { showAlert?: boolean }) {
   try {
+    await workoutData.ensureAchievementProgressLoaded();
+
     const userId = workoutData.getUserId();
     const [recordsResponse, summaryResponse, todayResponse] = await Promise.all([
       getRecords(userId),

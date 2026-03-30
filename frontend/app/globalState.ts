@@ -1,3 +1,5 @@
+import { loadAchievementProgress, saveAchievementProgress } from '@/lib/achievement-storage';
+
 export type WorkoutRecord = {
   recordId: string;
   date: string;
@@ -30,25 +32,71 @@ type UserProfile = {
   avatar: string | null;
 };
 
+type AchievementDefinition = {
+  id: string;
+  icon: string;
+  name: string;
+  condition: (data: {
+    maxStreakDays: number;
+    totalMinutes: number;
+    aiConsultationCount: number;
+  }) => boolean;
+};
+
 const DEFAULT_USER_ID = 'guest-user';
+const DEFAULT_BADGE = '🥚 はじまりの一歩';
+
+function calculateMaxStreakDays(dates: string[]) {
+  const normalizedDates = Array.from(
+    new Set(
+      dates
+        .filter((date): date is string => Boolean(date))
+        .map((date) => date.slice(0, 10)),
+    ),
+  ).sort();
+
+  if (normalizedDates.length === 0) {
+    return 0;
+  }
+
+  let currentStreak = 1;
+  let maxStreak = 1;
+
+  for (let index = 1; index < normalizedDates.length; index += 1) {
+    const previous = new Date(`${normalizedDates[index - 1]}T00:00:00`);
+    const current = new Date(`${normalizedDates[index]}T00:00:00`);
+    const diffDays = Math.round((current.getTime() - previous.getTime()) / 86400000);
+
+    if (diffDays === 1) {
+      currentStreak += 1;
+      maxStreak = Math.max(maxStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+
+  return maxStreak;
+}
 
 export const workoutData = {
   totalMinutes: 0,
   todayTotalMinutes: 0,
   todayRecords: 0,
   streakDays: 0,
+  maxStreakDays: 0,
   aiConsultationCount: 0,
   markedDates: {} as Record<string, { selected: boolean; selectedColor: string }>,
   unlockedAchievements: [] as string[],
   latestAchievementId: null as string | null,
+  achievementProgressLoadedForUserId: null as string | null,
   records: [] as WorkoutRecord[],
-  equippedBadge: '🥚 はじまりの一歩',
+  equippedBadge: DEFAULT_BADGE,
   themeColor: '#A4C639',
   isVibrationEnabled: true,
 
   userProfile: {
     userId: DEFAULT_USER_ID,
-    name: '筋肉太郎',
+    name: 'ゲスト',
     age: '20',
     height: '170',
     weight: '65.5',
@@ -63,8 +111,17 @@ export const workoutData = {
   },
 
   setUserProfile(profileData: Partial<UserProfile>) {
+    const nextUserId = profileData.userId;
+    if (nextUserId && nextUserId !== this.userProfile.userId) {
+      this.unlockedAchievements = [];
+      this.latestAchievementId = null;
+      this.maxStreakDays = 0;
+      this.aiConsultationCount = 0;
+      this.achievementProgressLoadedForUserId = null;
+    }
+
     this.userProfile = { ...this.userProfile, ...profileData };
-    console.log('👤 プロフィール更新:', this.userProfile);
+    console.log('プロフィール更新:', this.userProfile);
   },
 
   setRecords(records: WorkoutRecord[]) {
@@ -93,6 +150,7 @@ export const workoutData = {
       }
     });
     this.markedDates = newMarkedDates;
+    this.maxStreakDays = calculateMaxStreakDays(this.records.map((record) => record.date));
   },
 
   applySummary(summary: WorkoutSummary) {
@@ -125,17 +183,19 @@ export const workoutData = {
     this.todayTotalMinutes = 0;
     this.todayRecords = 0;
     this.streakDays = 0;
+    this.maxStreakDays = 0;
     this.aiConsultationCount = 0;
     this.markedDates = {};
     this.unlockedAchievements = [];
     this.latestAchievementId = null;
+    this.achievementProgressLoadedForUserId = null;
     this.records = [];
-    this.equippedBadge = '🥚 はじまりの一歩';
+    this.equippedBadge = DEFAULT_BADGE;
     this.themeColor = '#A4C639';
     this.isVibrationEnabled = true;
     this.userProfile = {
       userId: currentUserId,
-      name: '筋肉太郎',
+      name: 'ゲスト',
       age: '20',
       height: '170',
       weight: '65.5',
@@ -143,12 +203,12 @@ export const workoutData = {
       avatar: null,
     };
     this.colorListeners.forEach((listener) => listener(this.themeColor));
-    console.log('🧹 記録をリセットしました');
+    console.log('記録データをリセットしました');
   },
 
   setVibrationEnabled(enabled: boolean) {
     this.isVibrationEnabled = enabled;
-    console.log('📳 バイブレーション設定:', enabled ? 'ON' : 'OFF');
+    console.log('バイブレーション設定:', enabled ? 'ON' : 'OFF');
   },
 
   setThemeColor(color: string) {
@@ -159,7 +219,7 @@ export const workoutData = {
     });
     this.markedDates = newMarkedDates;
     this.colorListeners.forEach((listener) => listener(color));
-    console.log('🎨 テーマカラー変更:', color);
+    console.log('テーマカラー更新:', color);
   },
 
   subscribeColor(listener: (color: string) => void) {
@@ -169,15 +229,38 @@ export const workoutData = {
     };
   },
 
+  async ensureAchievementProgressLoaded() {
+    const userId = this.getUserId();
+    if (!userId || this.achievementProgressLoadedForUserId === userId) {
+      return;
+    }
+
+    const progress = await loadAchievementProgress(userId);
+    this.unlockedAchievements = [...progress.unlockedAchievements];
+    this.aiConsultationCount = progress.aiConsultationCount;
+    this.latestAchievementId = null;
+    this.achievementProgressLoadedForUserId = userId;
+  },
+
+  persistAchievementProgress() {
+    const userId = this.getUserId();
+    this.achievementProgressLoadedForUserId = userId;
+    void saveAchievementProgress(userId, {
+      unlockedAchievements: [...this.unlockedAchievements],
+      aiConsultationCount: this.aiConsultationCount,
+    });
+  },
+
   incrementAiCount() {
     this.aiConsultationCount += 1;
     this.checkAchievements();
+    this.persistAchievementProgress();
   },
 
   checkAchievements() {
-    this.ACHIEVEMENTS.forEach((ach) => {
-      if (ach.condition(this)) {
-        this.unlock(ach.id);
+    this.ACHIEVEMENTS.forEach((achievement) => {
+      if (achievement.condition(this)) {
+        this.unlock(achievement.id);
       }
     });
   },
@@ -186,6 +269,7 @@ export const workoutData = {
     if (!this.unlockedAchievements.includes(id)) {
       this.unlockedAchievements.push(id);
       this.latestAchievementId = id;
+      this.persistAchievementProgress();
     }
   },
 
@@ -218,17 +302,18 @@ export const workoutData = {
     yesterday.setDate(today.getDate() - 1);
     const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
     this.streakDays = this.markedDates[yStr] ? Math.max(this.streakDays, 1) + 1 : Math.max(this.streakDays, 1);
+    this.maxStreakDays = Math.max(this.maxStreakDays, this.streakDays);
     this.checkAchievements();
   },
 
   ACHIEVEMENTS: [
-    { id: 'streak_3', icon: '🐣', name: '三日坊主の破壊者', condition: (d: typeof workoutData) => d.streakDays >= 3 },
-    { id: 'streak_7', icon: '🔥', name: '鋼のルーティン', condition: (d: typeof workoutData) => d.streakDays >= 7 },
-    { id: 'streak_14', icon: '🦁', name: '不屈の執念', condition: (d: typeof workoutData) => d.streakDays >= 14 },
-    { id: 'streak_30', icon: '🏰', name: '筋肉の守護神', condition: (d: typeof workoutData) => d.streakDays >= 30 },
-    { id: 'time_100', icon: '⭐', name: '努力の結晶', condition: (d: typeof workoutData) => d.totalMinutes >= 100 },
-    { id: 'time_500', icon: '✨', name: '筋肉の賢者', condition: (d: typeof workoutData) => d.totalMinutes >= 500 },
-    { id: 'ai_1', icon: '💡', name: 'AIとの共鳴', condition: (d: typeof workoutData) => d.aiConsultationCount >= 1 },
-    { id: 'ai_5', icon: '🤝', name: 'AIマニア', condition: (d: typeof workoutData) => d.aiConsultationCount >= 5 },
-  ],
+    { id: 'streak_3', icon: '🔥', name: '3日連続の挑戦者', condition: (d) => d.maxStreakDays >= 3 },
+    { id: 'streak_7', icon: '🌟', name: '継続のルーキー', condition: (d) => d.maxStreakDays >= 7 },
+    { id: 'streak_14', icon: '💪', name: '2週間の努力家', condition: (d) => d.maxStreakDays >= 14 },
+    { id: 'streak_30', icon: '👑', name: '筋肉の王者', condition: (d) => d.maxStreakDays >= 30 },
+    { id: 'time_100', icon: '⏱️', name: '努力の積み上げ', condition: (d) => d.totalMinutes >= 100 },
+    { id: 'time_500', icon: '🏅', name: '筋肉の勲章', condition: (d) => d.totalMinutes >= 500 },
+    { id: 'ai_1', icon: '🤖', name: 'AIとの出会い', condition: (d) => d.aiConsultationCount >= 1 },
+    { id: 'ai_5', icon: '🧠', name: 'AIマニア', condition: (d) => d.aiConsultationCount >= 5 },
+  ] as AchievementDefinition[],
 };
