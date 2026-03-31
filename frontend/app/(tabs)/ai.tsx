@@ -127,7 +127,7 @@ export default function AiChatScreen() {
         {
           id: Date.now() + 2,
           sender: 'ai',
-          text: `${summaryText}\nこの内容でそのまま記録画面に移れます。`,
+          text: `${summaryText}\n提案したメニューをそのまま記録画面に入力できます。`,
           showRecordButton: true,
           menuData: {
             name: advice.recommendation.menuName,
