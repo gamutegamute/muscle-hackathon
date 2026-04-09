@@ -84,12 +84,6 @@ muscloop は、筋トレを続けたい人のための継続支援アプリで�
 
 ![記録画面](screenshots/record.png)
 
-### 設定
-
-プロフィール、通知、テーマカラー変更など、継続しやすい体験を支える設定をまとめています。
-
-![設定画面](screenshots/settings.png)
-
 ## 自分の担当
 
 私はこのプロジェクトで、**PM 兼バックエンド担当** として開発に関わりました。
@@ -169,3 +163,4 @@ AI 機能は最初から本実装を目指すのではなく、まずはダミ�
 ## 参考
 
 - プロジェクト README: [README.md](/C:/Users/soshi/github/muscle-hackathon/README.md)
+- Notion Portfolio: [Portfolio](https://boom-beauty-0ca.notion.site/Portfolio-33dfd0f3f8de80a19a92d5b2ac4c9aec?source=copy_link)

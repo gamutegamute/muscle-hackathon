@@ -237,6 +237,7 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:8000
 
 ## 補足
 
+- ポートフォリオ: [Notion Portfolio](https://boom-beauty-0ca.notion.site/Portfolio-33dfd0f3f8de80a19a92d5b2ac4c9aec?source=copy_link)
 - Google ログインは今後対応予定です
 - 通知は基盤実装済みで、development build 環境での安定確認を予定しています
 - 本リポジトリは継続開発中です
