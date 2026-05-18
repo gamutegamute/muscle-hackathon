@@ -27,7 +27,7 @@ def load_backend_env():
 load_backend_env()
 
 from app.routers import ai, home, notifications, profile, records, timer
-from app.routers.notifications import send_reminders
+from app.routers.notifications import run_reminders
 
 app = FastAPI(
     title="Muscle Hackathon API",
@@ -48,7 +48,7 @@ scheduler = BackgroundScheduler(timezone=ZoneInfo("Asia/Tokyo"))
 
 def start_scheduler():
     if not scheduler.running:
-        scheduler.add_job(send_reminders, "cron", hour=9, minute=0, id="daily_reminders", replace_existing=True)
+        scheduler.add_job(run_reminders, "cron", hour=9, minute=0, id="daily_reminders", replace_existing=True)
         scheduler.start()
         print("Notification scheduler started. Daily reminders run at 09:00 JST.")
 

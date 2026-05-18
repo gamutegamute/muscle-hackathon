@@ -5,7 +5,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.auth import CurrentUser, get_current_user_optional, resolve_user_id
+from app.auth import CurrentUser, get_current_user_optional, require_admin_token, resolve_user_id
 from app.firebase import db
 
 try:
@@ -188,8 +188,7 @@ def send_test_notification(
     }
 
 
-@router.post("/send-reminders")
-def send_reminders():
+def run_reminders():
     ensure_push_sdk()
 
     users_ref = db.collection("users").stream()
@@ -231,3 +230,8 @@ def send_reminders():
         )
 
     return {"status": "success", "processedUsers": results}
+
+
+@router.post("/send-reminders")
+def send_reminders(_: bool = Depends(require_admin_token)):
+    return run_reminders()
