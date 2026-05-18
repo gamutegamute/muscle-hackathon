@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth import CurrentUser, get_current_user_optional, resolve_user_id
 from app.firebase import db
 from app.schemas.ai import AdviceRequest, AdviceResponse
 from app.services.ai_coach import build_ai_advice
@@ -18,9 +19,10 @@ def get_user_records(user_id: str):
 
 
 @router.post("/advice", response_model=AdviceResponse)
-def get_advice(request_data: AdviceRequest):
-    profile = get_user(request_data.userId) or {}
-    records = get_user_records(request_data.userId)
+def get_advice(request_data: AdviceRequest, current_user: CurrentUser = Depends(get_current_user_optional)):
+    user_id = resolve_user_id(request_data.userId, current_user)
+    profile = get_user(user_id) or {}
+    records = get_user_records(user_id)
     user_name = profile.get("name") or "あなた"
 
     return build_ai_advice(

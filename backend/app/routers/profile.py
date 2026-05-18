@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import CurrentUser, get_current_user_optional, resolve_user_id
 from app.firebase import db
 from app.schemas.profile import ProfileCreate
 from app.schemas.profile_update import ProfileUpdate
@@ -23,11 +24,12 @@ def update_user(user_id: str, data: dict):
 
 
 @router.post("")
-def create_profile(profile: ProfileCreate):
+def create_profile(profile: ProfileCreate, current_user: CurrentUser = Depends(get_current_user_optional)):
     data = profile.model_dump()
+    user_id = resolve_user_id(data["userId"], current_user)
 
     user_data = {
-        "userId": data["userId"],
+        "userId": user_id,
         "name": data["name"],
         "age": data["age"],
         "height": data["height"],
@@ -41,24 +43,26 @@ def create_profile(profile: ProfileCreate):
         "createdAt": datetime.utcnow(),
     }
 
-    save_user(data["userId"], user_data)
+    save_user(user_id, user_data)
 
     return {"message": "profile saved", "data": user_data}
 
 
 @router.get("/{user_id}")
-def get_profile(user_id: str):
-    data = get_user(user_id)
+def get_profile(user_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
+    resolved_user_id = resolve_user_id(user_id, current_user)
+    data = get_user(resolved_user_id)
 
     if not data:
         raise HTTPException(status_code=404, detail="user not found")
 
-    return {**data, "userId": user_id}
+    return {**data, "userId": resolved_user_id}
 
 
 @router.patch("/{user_id}")
-def update_profile(user_id: str, profile: ProfileUpdate):
-    existing_user = get_user(user_id)
+def update_profile(user_id: str, profile: ProfileUpdate, current_user: CurrentUser = Depends(get_current_user_optional)):
+    resolved_user_id = resolve_user_id(user_id, current_user)
+    existing_user = get_user(resolved_user_id)
 
     if not existing_user:
         raise HTTPException(status_code=404, detail="user not found")
@@ -68,10 +72,10 @@ def update_profile(user_id: str, profile: ProfileUpdate):
         raise HTTPException(status_code=400, detail="no profile fields to update")
 
     update_data["updatedAt"] = datetime.utcnow()
-    update_user(user_id, update_data)
+    update_user(resolved_user_id, update_data)
 
     return {
         "message": "profile updated",
-        "userId": user_id,
+        "userId": resolved_user_id,
         "updated": update_data,
     }

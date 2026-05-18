@@ -1,8 +1,9 @@
 from datetime import datetime
 from firebase_admin import firestore
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import CurrentUser, assert_record_owner, get_current_user_optional, resolve_user_id
 from app.firebase import db
 from app.schemas.record import RecordCreate
 from app.schemas.record_update import RecordUpdate
@@ -47,11 +48,12 @@ def update_user_last_activity(user_id: str):
 
 
 @router.post("")
-def create_record(record: RecordCreate):
+def create_record(record: RecordCreate, current_user: CurrentUser = Depends(get_current_user_optional)):
     data = record.model_dump()
+    user_id = resolve_user_id(data["userId"], current_user)
 
     record_data = {
-        "userId": data["userId"],
+        "userId": user_id,
         "menuName": data["menuName"],
         "count": data["count"],
         "duration": data.get("duration"),
@@ -63,24 +65,26 @@ def create_record(record: RecordCreate):
     }
 
     saved_data = save_record(record_data)
-    update_user_last_activity(data["userId"])
+    update_user_last_activity(user_id)
     return {"message": "record saved", "data": format_record(saved_data)}
 
 
 @router.get("/summary/{user_id}")
-def get_records_summary(user_id: str):
-    return build_records_summary(user_id, get_user_records(user_id))
+def get_records_summary(user_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
+    resolved_user_id = resolve_user_id(user_id, current_user)
+    return build_records_summary(resolved_user_id, get_user_records(resolved_user_id))
 
 
 @router.get("/today/{user_id}")
-def get_today_records(user_id: str):
+def get_today_records(user_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
+    resolved_user_id = resolve_user_id(user_id, current_user)
     today_str = datetime.now(JST).date().isoformat()
-    records = [format_record(record) for record in get_user_records(user_id)]
+    records = [format_record(record) for record in get_user_records(resolved_user_id)]
     today_records = [record for record in records if record.get("date") == today_str]
     today_records.sort(key=lambda record: record.get("createdAt") or "", reverse=True)
 
     return {
-        "userId": user_id,
+        "userId": resolved_user_id,
         "date": today_str,
         "totalRecords": len(today_records),
         "totalMinutes": round(sum(record.get("minutes", 0) or 0 for record in today_records), 1),
@@ -89,19 +93,21 @@ def get_today_records(user_id: str):
 
 
 @router.get("/{user_id}")
-def get_records(user_id: str):
-    records = [format_record(record) for record in get_user_records(user_id)]
+def get_records(user_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
+    resolved_user_id = resolve_user_id(user_id, current_user)
+    records = [format_record(record) for record in get_user_records(resolved_user_id)]
     records.sort(key=lambda record: record.get("createdAt") or "", reverse=True)
 
-    return {"userId": user_id, "totalRecords": len(records), "records": records}
+    return {"userId": resolved_user_id, "totalRecords": len(records), "records": records}
 
 
 @router.patch("/{record_id}")
-def update_record_by_id(record_id: str, record: RecordUpdate):
+def update_record_by_id(record_id: str, record: RecordUpdate, current_user: CurrentUser = Depends(get_current_user_optional)):
     existing_record = get_record_by_id(record_id)
 
     if not existing_record:
         raise HTTPException(status_code=404, detail="record not found")
+    assert_record_owner(existing_record, current_user)
 
     update_data = record.model_dump(exclude_none=True)
     if not update_data:
@@ -119,11 +125,12 @@ def update_record_by_id(record_id: str, record: RecordUpdate):
 
 
 @router.delete("/{record_id}")
-def delete_record_by_id(record_id: str):
+def delete_record_by_id(record_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
     existing_record = get_record_by_id(record_id)
 
     if not existing_record:
         raise HTTPException(status_code=404, detail="record not found")
+    assert_record_owner(existing_record, current_user)
 
     delete_record(record_id)
     return {"message": "record deleted", "recordId": record_id}

@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 import random
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth import CurrentUser, get_current_user_optional, resolve_user_id
 from app.firebase import db
 
 try:
@@ -148,8 +149,13 @@ def pick_category(days: int) -> str | None:
 
 
 @router.post("/test-user/{user_id}")
-def send_test_notification(user_id: str, payload: TestNotificationRequest):
-    user_doc = db.collection("users").document(user_id).get()
+def send_test_notification(
+    user_id: str,
+    payload: TestNotificationRequest,
+    current_user: CurrentUser = Depends(get_current_user_optional),
+):
+    resolved_user_id = resolve_user_id(user_id, current_user)
+    user_doc = db.collection("users").document(resolved_user_id).get()
     if not user_doc.exists:
         raise HTTPException(status_code=404, detail="user not found")
 
@@ -168,7 +174,7 @@ def send_test_notification(user_id: str, payload: TestNotificationRequest):
 
     return {
         "status": push_result["status"],
-        "userId": user_id,
+        "userId": resolved_user_id,
         "expoPushToken": expo_push_token,
         "title": payload.title,
         "body": payload.body,

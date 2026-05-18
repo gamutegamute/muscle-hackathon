@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { auth } from '@/lib/firebase-client';
+
 export type ApiProfile = {
   userId: string;
   name: string;
@@ -74,11 +76,18 @@ export const API_BASE_URL =
   (process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, '');
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const idToken = await auth.currentUser?.getIdToken();
+  if (idToken) {
+    headers.Authorization = `Bearer ${idToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
