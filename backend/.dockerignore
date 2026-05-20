@@ -1,0 +1,15 @@
+.env
+.env.*
+!/.env.example
+serviceAccountKey.json
+*.json
+!package-lock.json
+
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+Dockerfile
+.dockerignore
