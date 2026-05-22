@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
@@ -15,7 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 // 💡 既存のFirebase初期化コードを使用してください
 const firebaseConfig = { /* あなたのFirebase設定 */ };
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
 export default function GoogleSignInScreen() {
