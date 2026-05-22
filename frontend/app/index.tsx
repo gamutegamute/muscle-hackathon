@@ -91,9 +91,16 @@ export default function App() {
     return Boolean(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
   }, []);
 
+
+
   const completeLogin = useCallback(
-    async (userId: string) => {
+    async (userId: string, idToken?: string) => {
       workoutData.setUserProfile({ userId });
+
+      if (idToken) {
+        // 今後ここにトークンを共通設定に保存する処理を入れます
+        console.log("Firebase ID Tokenを保持しました:", idToken);
+      }
 
       try {
         await getProfile(userId);
@@ -110,7 +117,7 @@ export default function App() {
     await ensureGuestUserId();
     router.replace('/profile');
   };
-
+  
   const handleEmailAuth = async () => {
     const normalizedEmail = email.trim();
 
@@ -132,7 +139,10 @@ export default function App() {
           ? await registerWithEmail(normalizedEmail, password)
           : await loginWithEmail(normalizedEmail, password);
 
-      await completeLogin(credential.user.uid);
+      const idToken = await credential.user.getIdToken();
+
+      // ⭕️ completeLogin に uid と一緒に idToken も渡す！
+      await completeLogin(credential.user.uid, idToken);
     } catch (error) {
       const fallbackMessage = mode === 'signup' ? '新規登録に失敗しました。' : 'ログインに失敗しました。';
       const message = error instanceof Error ? error.message : fallbackMessage;

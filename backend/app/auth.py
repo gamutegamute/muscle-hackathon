@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 import os
+from typing import Optional
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Security, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import firebase_admin
 from firebase_admin import auth as firebase_auth
 
+# Swagger UI等で鍵マークを出し、Bearer入力を有効にする共通インスタンス
+security = HTTPBearer()
 
 @dataclass(frozen=True)
 class CurrentUser:
@@ -16,6 +21,11 @@ def is_guest_user_id(user_id: str) -> bool:
 
 
 def get_current_user_optional(authorization: str | None = Header(default=None)) -> CurrentUser:
+    """
+    既存の認証ヘルパー。
+    Headerの文字列を手動でパースし、ログインしていればそのuidを、
+    未ログインならゲスト状態を返します。
+    """
     if not authorization:
         return CurrentUser(uid=None, is_guest=True)
 
@@ -36,6 +46,9 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 
 
 def resolve_user_id(requested_user_id: str, current_user: CurrentUser) -> str:
+    """
+    bodyのuserIdが本当に正しいか検証し、安全なuserIdを返す関数。
+    """
     if current_user.uid:
         return current_user.uid
 
@@ -59,3 +72,52 @@ def require_admin_token(x_admin_token: str | None = Header(default=None)):
         raise HTTPException(status_code=403, detail="invalid admin token")
 
     return True
+
+
+# ==========================================
+# 🔥 今回新しく追加したガチ認証ロジック
+# ==========================================
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
+    """
+    【ログイン必須API用】
+    フロントから送られてきた Firebase ID Token を検証し、
+    改ざんされていない本物の uid (User ID) を返します（ゲストは弾かれます）。
+    """
+    token = credentials.credentials
+    try:
+        # Firebase Admin SDK が署名の検証、有効期限のチェックをすべて自動で行う
+        decoded_token = firebase_auth.verify_id_token(token)
+        uid = decoded_token.get("uid")
+        
+        if not uid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="トークン内に有効なUIDが含まれていません。"
+            )
+        return uid
+        
+    except firebase_auth.ExpiredIdTokenError: # ⭕️ インポート名に合わせて修正
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="トークンの有効期限が切れています。再ログインしてください。"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"認証に失敗しました: {str(e)}"
+        )
+
+
+async def get_current_user_strict_object(credentials: Optional[HTTPAuthorizationCredentials] = Security(HTTPBearer(auto_error=False))) -> CurrentUser:
+    """
+    【移行期・互換用】
+    新しいHTTPBearerを使いつつ、戻り値を既存の『CurrentUser』オブジェクトの形式に揃えた関数です。
+    """
+    if not credentials:
+        return CurrentUser(uid=None, is_guest=True)
+    try:
+        uid = await get_current_user(credentials)
+        return CurrentUser(uid=uid, is_guest=False)
+    except HTTPException:
+        return CurrentUser(uid=None, is_guest=True)
