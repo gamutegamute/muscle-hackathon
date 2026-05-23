@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { workoutData, type WorkoutRecord } from '../globalState';
+import { workoutData, type WorkoutRecord } from './globalState';
 import { syncWorkoutData } from '@/lib/workout-sync';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

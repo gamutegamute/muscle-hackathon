@@ -26,34 +26,48 @@ export async function getExpoPushToken(options?: { requestPermissionIfNeeded?: b
     return undefined;
   }
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  const requestPermissionIfNeeded = options?.requestPermissionIfNeeded ?? false;
+  const timeoutPromise = new Promise<null>((_, reject) => {
+    setTimeout(() => reject(new Error('getExpoPushToken timed out')), 3000);
+  });
 
-  if (existingStatus !== 'granted') {
-    if (!requestPermissionIfNeeded) {
+  const fetchTokenPromise = async () => {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    const requestPermissionIfNeeded = options?.requestPermissionIfNeeded ?? false;
+
+    if (existingStatus !== 'granted') {
+      if (!requestPermissionIfNeeded) {
+        return null;
+      }
+      const permissionResponse = await Notifications.requestPermissionsAsync();
+      finalStatus = permissionResponse.status;
+    }
+
+    if (finalStatus !== 'granted') {
       return null;
     }
-    const permissionResponse = await Notifications.requestPermissionsAsync();
-    finalStatus = permissionResponse.status;
-  }
 
-  if (finalStatus !== 'granted') {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    }
+
+    const projectId = getProjectId();
+    if (!projectId) {
+      throw new Error('Expo push notifications require EXPO_PUBLIC_EAS_PROJECT_ID or an EAS project configuration.');
+    }
+
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    return token.data;
+  };
+
+  try {
+    return await Promise.race([fetchTokenPromise(), timeoutPromise]);
+  } catch (error) {
+    console.warn('getExpoPushToken error/timeout:', error);
     return null;
   }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-    });
-  }
-
-  const projectId = getProjectId();
-  if (!projectId) {
-    throw new Error('Expo push notifications require EXPO_PUBLIC_EAS_PROJECT_ID or an EAS project configuration.');
-  }
-
-  const token = await Notifications.getExpoPushTokenAsync({ projectId });
-  return token.data;
 }
+

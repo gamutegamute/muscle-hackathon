@@ -478,6 +478,7 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
+          <MenuLink icon="people-outline" label="フレンド" themeColor={theme} onPress={() => router.push('/friends' as any)} />
           <MenuLink icon="help-circle-outline" label="ヘルプ・使い方" themeColor={theme} onPress={() => setShowHelpModal(true)} />
           <MenuLink icon="log-out-outline" label="ログアウト" color="#FF3B30" onPress={handleLogout} themeColor={theme} />
         </View>

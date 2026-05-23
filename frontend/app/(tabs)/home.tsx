@@ -245,6 +245,15 @@ export default function HomeScreen() {
           )}
         </View>
 
+        <TouchableOpacity 
+          style={[styles.graphButton, { backgroundColor: theme }]} 
+          onPress={() => router.push('/graph')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="stats-chart" size={24} color="#FFF" />
+          <Text style={styles.graphButtonText}>トレーニンググラフを見る</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -281,4 +290,6 @@ const styles = StyleSheet.create({
   emptyContainer: { paddingVertical: 20, alignItems: 'center' },
   emptyText: { color: COLORS.grayText, fontSize: 14, fontWeight: 'bold' },
   emptySubText: { color: COLORS.grayText, fontSize: 12, marginTop: 4 },
+  graphButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderRadius: 15, elevation: 3, marginBottom: 20 },
+  graphButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
 });
