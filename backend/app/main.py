@@ -6,6 +6,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import friends
+
 
 def load_backend_env():
     env_path = Path(__file__).resolve().parents[1] / ".env"
@@ -74,3 +76,4 @@ app.include_router(ai.router)
 app.include_router(home.router)
 app.include_router(timer.router)
 app.include_router(notifications.router)
+app.include_router(friends.router)
