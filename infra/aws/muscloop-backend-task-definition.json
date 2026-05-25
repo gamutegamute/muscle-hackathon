@@ -1,0 +1,46 @@
+{
+  "family": "muscloop-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::986232522042:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "muscloop-backend",
+      "image": "986232522042.dkr.ecr.ap-northeast-1.amazonaws.com/muscloop-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "GEMINI_MODEL",
+          "value": "gemini-2.5-flash"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "GEMINI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:986232522042:secret:muscloop/backend/gemini-api-key-lVtaDm"
+        },
+        {
+          "name": "FIREBASE_SERVICE_ACCOUNT_JSON",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:986232522042:secret:muscloop/backend/firebase-service-account-json-pRbPxW"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/muscloop-backend",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
