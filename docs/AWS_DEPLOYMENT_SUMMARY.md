@@ -14,6 +14,7 @@ muscloopのバックエンドをローカルPCに依存せず公開するため�
 - ALB経由で外部からAPIにアクセスできる
 - `/health` でヘルスチェックできる
 - `/docs` でFastAPIのSwagger UIを確認できる
+- iPhoneアプリからAWSバックエンド経由で記録を保存できる
 - Firebase秘密鍵とGemini APIキーをAWS Secrets Managerで管理している
 - CloudWatch Logsでバックエンドの起動ログを確認できる
 - バックエンドの8000番ポートは直接公開せず、ALBからの通信だけ許可している
@@ -216,6 +217,29 @@ npm.cmd run start -- --clear
 - ゲスト動線はAPIごとに扱いが違うため、AWS保存確認の本命はログインユーザーで見る
 - Expo起動中に `.env` を変えた場合は、必ずExpoを再起動する
 - AWS確認が終わったら、必要に応じてECSサービスを `desired-count 0` に戻す
+
+## AWS経由のアプリ保存確認
+
+2026-05-25に、iPhoneアプリからAWSバックエンドへ接続して記録保存を確認した。
+
+確認できたこと:
+
+- ExpoアプリがAWSのALB URLをAPI接続先として使える
+- ログイン済みユーザーで記録を保存できる
+- 保存後、ホーム画面に今日の記録が反映される
+- 記録履歴に保存した内容が表示される
+- CloudWatch Logsで `POST /records` が `200 OK` になっている
+- その後の `GET /records`、`GET /records/today`、`GET /records/summary` も `200 OK` になっている
+
+この確認により、以下の流れが実際に通っている。
+
+```text
+iPhone app
+  -> ALB
+  -> ECS Fargate
+  -> FastAPI
+  -> Firestore
+```
 
 ## 発表後の削除チェックリスト
 
