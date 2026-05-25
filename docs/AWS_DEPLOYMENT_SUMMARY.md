@@ -186,6 +186,37 @@ aws ecs update-service `
 
 数分待ってから `/health` を確認する。
 
+## フロントをAWSバックエンドにつなぐ手順
+
+`frontend/.env` のAPI URLをAWSのALB URLに切り替える。
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com
+```
+
+その後、Expoを再起動する。
+
+```powershell
+cd frontend
+npm.cmd run start -- --clear
+```
+
+確認すること:
+
+- ログイン済みユーザーでアプリを開ける
+- 記録を保存できる
+- ホーム画面に今日の記録が反映される
+- 記録履歴に保存した内容が出る
+- FastAPIの `/docs` がAWS URLで開ける
+- CloudWatch Logsにエラーが出ていない
+
+注意:
+
+- `POST /records` はFirebase ID token必須なので、実際の保存確認はログイン済みユーザーで行う
+- ゲスト動線はAPIごとに扱いが違うため、AWS保存確認の本命はログインユーザーで見る
+- Expo起動中に `.env` を変えた場合は、必ずExpoを再起動する
+- AWS確認が終わったら、必要に応じてECSサービスを `desired-count 0` に戻す
+
 ## 発表後の削除チェックリスト
 
 発表後にAWS費用を止める場合は、以下を確認して削除する。
