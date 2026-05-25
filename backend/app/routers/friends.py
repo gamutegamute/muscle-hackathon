@@ -4,6 +4,7 @@ from app.firebase import db
 from app.schemas.user import FriendProfileResponse
 from typing import List
 from app.schemas.user import FriendProfileResponse, FriendApproveRequest
+from app.schemas.user import FriendProfileResponse, FriendApproveRequest, FriendRequestRequest
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -92,4 +93,52 @@ async def approve_friend_request(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"フレンド申請の承認に失敗しました: {str(e)}"
+        )
+    
+@router.post("/request", status_code=status.HTTP_201_CREATED)
+async def send_friend_request(
+    request: FriendRequestRequest,
+    current_uid: str = Depends(get_current_user)  # 🔒 ログイン必須（申請を送る側のAさん）
+):
+    try:
+        to_uid = request.toUserId  # 申請相手（Bさん）のUID
+
+        # 自分自身に申請を送ろうとしている場合は弾く
+        if current_uid == to_uid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="自分自身にフレンド申請を送ることはできません。"
+            )
+
+        # 相手のユーザーが本当に存在するか一応チェック
+        target_user_doc = db.collection("users").document(to_uid).get()
+        if not target_user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="指定されたユーザーが見つかりません。"
+            )
+
+        # 自分の「friends」サブコレクションに、相手を「pending（保留中）」として保存
+        my_request_ref = db.collection("users").document(current_uid).collection("friends").document(to_uid)
+        
+        # すでにフレンド（accepted）や申請中（pending）でないか念のため確認
+        existing_doc = my_request_ref.get()
+        if existing_doc.exists:
+            status_now = existing_doc.to_dict().get("status")
+            if status_now == "accepted":
+                return {"message": "既にフレンドになっています。"}
+            elif status_now == "pending":
+                return {"message": "既にフレンド申請を送信済みです。"}
+
+        # 新規に pending ステータスでレコードを作成
+        my_request_ref.set({"status": "pending"})
+
+        return {"message": "フレンド申請を送信しました！相手の承認を待っています。"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"フレンド申請の送信に失敗しました: {str(e)}"
         )

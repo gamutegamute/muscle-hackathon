@@ -32,3 +32,9 @@ class FriendApproveRequest(CamelModel):
     フレンド申請を承認する際のリクエストボディ
     """
     friendUserId: str  # 承認したい相手（申請をくれた人）のUID
+
+class FriendRequestRequest(CamelModel):
+    """
+    フレンド申請を送信する際のリクエストボディ
+    """
+    toUserId: str  # 申請を送りたい相手のUID
