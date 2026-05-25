@@ -26,3 +26,9 @@ class UserRankingResponse(CamelModel):   # ⭕️ こちらは最初からバッ
     photoURL: Optional[str] = None
     streakDays: int = 0  # 筋トレ連続継続日数（これでソートします）
     statusMessage: Optional[str] = ""
+
+class FriendApproveRequest(CamelModel):
+    """
+    フレンド申請を承認する際のリクエストボディ
+    """
+    friendUserId: str  # 承認したい相手（申請をくれた人）のUID
