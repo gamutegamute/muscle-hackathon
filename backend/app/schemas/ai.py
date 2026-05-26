@@ -21,6 +21,8 @@ class AdviceMenu(CamelModel):
 
 
 class AdviceResponse(CamelModel):
+    responseType: str = Field(default="workout", max_length=50)
+    showRecordButton: bool = True
     message: str
     reason: str
     recommendation: AdviceMenu

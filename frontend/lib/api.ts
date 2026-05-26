@@ -46,6 +46,8 @@ export type ApiSummary = {
 };
 
 export type ApiAdvice = {
+  responseType?: string;
+  showRecordButton?: boolean;
   message: string;
   reason: string;
   recommendation: {

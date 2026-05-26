@@ -57,6 +57,14 @@ const sanitizeRecentMenus = (menus: string[]) => {
     .slice(0, 2);
 };
 
+const formatMenuForDisplay = (menu: MenuData) => {
+  const duration = menu.mins > 0 || menu.secs > 0
+    ? `${menu.mins > 0 ? `${menu.mins}分` : ''}${menu.secs > 0 ? `${menu.secs}秒` : ''}`
+    : `${menu.count}回`;
+
+  return `${menu.name} ${duration} × ${menu.sets}セット`;
+};
+
 export default function AiChatScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -118,26 +126,33 @@ export default function AiChatScreen() {
           ? `最近は ${recentMenus.join('、')} に取り組めていますね。`
           : 'まだ記録が少ないので、まずは続けやすい内容から整えていきましょう。';
 
-      appendAiMessages([
+      const nextMessages: Message[] = [
         {
           id: Date.now() + 1,
           sender: 'ai',
           text: advice.message,
-        },
-        {
+        }
+      ];
+
+      if (advice.showRecordButton !== false) {
+        const menuData = {
+          name: advice.recommendation.menuName,
+          count: advice.recommendation.count,
+          sets: advice.recommendation.sets,
+          mins: advice.recommendation.mins,
+          secs: advice.recommendation.secs,
+        };
+
+        nextMessages.push({
           id: Date.now() + 2,
           sender: 'ai',
-          text: `${summaryText}\n提案したメニューをそのまま記録画面に入力できます。`,
+          text: `${summaryText}\n記録メニュー: ${formatMenuForDisplay(menuData)}\nこの内容をそのまま記録画面に入力できます。`,
           showRecordButton: true,
-          menuData: {
-            name: advice.recommendation.menuName,
-            count: advice.recommendation.count,
-            sets: advice.recommendation.sets,
-            mins: advice.recommendation.mins,
-            secs: advice.recommendation.secs,
-          },
-        },
-      ]);
+          menuData,
+        });
+      }
+
+      appendAiMessages(nextMessages);
     } catch {
       Alert.alert('AI相談に失敗しました', getApiConnectionHelpMessage());
     } finally {

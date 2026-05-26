@@ -49,6 +49,71 @@ LEVEL_DEFAULTS = {
 UPPER_BODY_KEYWORDS = ("ベンチ", "チンニング", "ショルダー", "プレス", "ロー", "腕立て", "懸垂", "胸")
 LOWER_BODY_KEYWORDS = ("スクワット", "ランジ", "デッド", "ヒップ", "ブルガリアン", "脚")
 
+BODY_PART_MENUS = {
+    "shoulder": {
+        "keywords": ("肩", "三角筋", "shoulder", "ショルダー", "サイドレイズ", "リアレイズ"),
+        "label": "肩",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "サイドレイズ", "count": 10, "sets": 2, "mins": 0, "secs": 0},
+            "中級者（週1〜3回）": {"menuName": "サイドレイズ", "count": 12, "sets": 3, "mins": 0, "secs": 0},
+            "上級者（ガチ勢）": {"menuName": "ショルダープレス", "count": 10, "sets": 4, "mins": 0, "secs": 0},
+        },
+        "tip": "反動を使わず、肩をすくめない範囲でゆっくり上げ下げするのがポイントです。",
+    },
+    "chest": {
+        "keywords": ("胸", "大胸筋", "chest", "ベンチ", "腕立て", "プッシュアップ"),
+        "label": "胸",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "膝つきプッシュアップ", "count": 8, "sets": 2, "mins": 0, "secs": 0},
+            "中級者（週1〜3回）": {"menuName": "プッシュアップ", "count": 12, "sets": 3, "mins": 0, "secs": 0},
+            "上級者（ガチ勢）": {"menuName": "ベンチプレス", "count": 10, "sets": 4, "mins": 0, "secs": 0},
+        },
+        "tip": "胸を張り、肩だけで押さずに胸の前側を使う意識で行いましょう。",
+    },
+    "back": {
+        "keywords": ("背中", "広背筋", "back", "ロー", "懸垂", "チンニング"),
+        "label": "背中",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "タオルローイング", "count": 12, "sets": 2, "mins": 0, "secs": 0},
+            "中級者（週1〜3回）": {"menuName": "チンニング", "count": 6, "sets": 3, "mins": 0, "secs": 0},
+            "上級者（ガチ勢）": {"menuName": "チンニング", "count": 10, "sets": 4, "mins": 0, "secs": 0},
+        },
+        "tip": "腕だけで引かず、肩甲骨を寄せるイメージを入れると背中に入りやすいです。",
+    },
+    "legs": {
+        "keywords": ("脚", "足", "下半身", "太もも", "お尻", "leg", "スクワット", "ランジ"),
+        "label": "下半身",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "スクワット", "count": 10, "sets": 2, "mins": 0, "secs": 0},
+            "中級者（週1〜3回）": {"menuName": "ランジ", "count": 10, "sets": 3, "mins": 0, "secs": 0},
+            "上級者（ガチ勢）": {"menuName": "ブルガリアンスクワット", "count": 12, "sets": 3, "mins": 0, "secs": 0},
+        },
+        "tip": "膝とつま先の向きをそろえ、痛みが出る深さまでは無理に下げないでください。",
+    },
+    "arms": {
+        "keywords": ("腕", "二頭", "三頭", "力こぶ", "arm", "アームカール"),
+        "label": "腕",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "アームカール", "count": 10, "sets": 2, "mins": 0, "secs": 0},
+            "中級者（週1〜3回）": {"menuName": "アームカール", "count": 12, "sets": 3, "mins": 0, "secs": 0},
+            "上級者（ガチ勢）": {"menuName": "ディップス", "count": 10, "sets": 4, "mins": 0, "secs": 0},
+        },
+        "tip": "反動を使いすぎず、上げる時も下ろす時もコントロールしましょう。",
+    },
+    "abs": {
+        "keywords": ("腹", "腹筋", "体幹", "お腹", "abs", "プランク"),
+        "label": "腹筋",
+        "menus": {
+            "初心者（これから始める）": {"menuName": "プランク", "count": 1, "sets": 2, "mins": 0, "secs": 20},
+            "中級者（週1〜3回）": {"menuName": "プランク", "count": 1, "sets": 3, "mins": 0, "secs": 40},
+            "上級者（ガチ勢）": {"menuName": "プランク", "count": 1, "sets": 4, "mins": 1, "secs": 0},
+        },
+        "tip": "腰を反らせず、頭からかかとまで一直線を保つ意識で行いましょう。",
+    },
+}
+
+RECORDABLE_TOPIC_KEYS = {"today", "body_part", "split", "strength", "intensity", "plateau", "plan"}
+
 
 @dataclass
 class AdviceContext:
@@ -66,8 +131,63 @@ def _normalize_text(value: str | None) -> str:
 def detect_topic(topic: str, message: str | None) -> str:
     normalized = _normalize_text(f"{topic} {message or ''}")
 
-    if any(keyword in normalized for keyword in ("疲れ", "だるい", "休み", "回復", "筋肉痛")):
+    if any(keyword in normalized for keyword in ("ステロイド", "ドーピング", "拒食", "吐く", "何も食べない", "絶食", "1日でムキムキ", "一日でムキムキ")):
+        return "unsafe"
+    if any(keyword in normalized for keyword in ("個人情報", "安全", "セキュリティ", "プライバシー", "他人", "フレンドに", "公開", "体重見える", "データ", "保存先")) and not any(keyword in normalized for keyword in ("ログ", "分析", "評価", "計算", "調整", "変化")):
+        return "privacy"
+    if any(keyword in normalized for keyword in ("アプリ", "muscloop", "マッスループ", "何ができ", "使い方", "機能")):
+        return "app_info"
+    if any(keyword in normalized for keyword in ("ログ", "記録から", "成長分析", "栄養バランス", "評価して", "分析して", "最適化", "計算して", "次回メニュー調整", "プラン修正", "体重の変化", "体脂肪の変化")):
+        return "data_analysis"
+    if any(keyword in normalized for keyword in ("重量", "伸びない", "伸ばしたい", "停滞", "限界", "セット数", "回数", "オーバートレーニング", "成長", "見た目変わる", "どれくらいで変わる")):
+        return "progress"
+    if any(keyword in normalized for keyword in ("モテ", "かっこよ", "見た目", "スタイル", "痩せ", "やせ", "ダイエット", "細マッチョ", "腹筋割", "逆三角形", "vシェイプ", "顔周り", "姿勢よく")):
+        return "general"
+    if any(keyword in normalized for keyword in ("フォーム", "姿勢", "やり方", "方法", "コツ", "正しい", "効かない", "可動域", "チート", "反動", "呼吸", "ゆっくり", "速く", "腰を痛めない", "肩痛くなる原因")):
+        return "form"
+    if any(keyword in normalized for keyword in ("やる気", "続かない", "めんど", "不安", "緊張", "モチベ", "サボ", "習慣", "比べて", "落ち込")):
+        return "motivation"
+    if any(keyword in normalized for keyword in ("痛い", "痛み", "怪我", "けが", "腰痛", "膝痛", "肩痛", "痛む", "治療", "診断")):
+        return "injury"
+    if any(keyword in normalized for keyword in ("疲れ", "だるい", "休み", "回復", "筋肉痛", "寝不足", "睡眠", "ストレッチ", "疲労")):
         return "recovery"
+    if any(keyword in normalized for keyword in ("プロテイン", "クレアチン", "bcaa", "サプリ", "ホエイ", "ソイ")):
+        return "supplement"
+    if any(keyword in normalized for keyword in ("食事", "栄養", "protein", "たんぱく", "タンパク", "コンビニ", "カロリー", "増量", "減量", "お酒", "酒", "寝る前", "安く", "食費", "高タンパク")):
+        return "nutrition"
+    if any(keyword in normalized for keyword in ("体脂肪", "体重", "身長", "目標設定", "目標を作", "バルク", "カット", "筋肥大", "脂肪減少", "3ヶ月で", "三ヶ月で")):
+        return "goal_strategy"
+    if any(keyword in normalized for keyword in ("目標", "プラン", "計画", "今日", "メニュー組", "メニュー作", "週何回", "ルーティン", "生活", "通学", "バイト", "30分", "時間", "家トレ", "ジム", "ダンベル", "器具", "全身法", "分割法", "部位分け", "有酸素", "腹筋は毎日", "1週間", "一週間", "軽めメニュー", "補助種目", "脚トレ")):
+        return "plan"
+
+    if any(keyword in normalized for keyword in ("ステロイド", "ドーピング", "拒食", "吐く", "何も食べない", "絶食", "1日でムキムキ", "一日でムキムキ")):
+        return "unsafe"
+    if any(keyword in normalized for keyword in ("個人情報", "安全", "セキュリティ", "プライバシー", "他人", "フレンドに", "公開", "体重見える", "データ", "保存先")):
+        return "privacy"
+    if any(keyword in normalized for keyword in ("アプリ", "muscloop", "マッスループ", "何ができ", "使い方", "機能")):
+        return "app_info"
+    if any(keyword in normalized for keyword in ("重量", "伸びない", "停滞", "限界", "セット数", "回数", "オーバートレーニング", "成長", "見た目変わる")):
+        return "progress"
+    if any(keyword in normalized for keyword in ("モテ", "かっこよ", "見た目", "スタイル", "痩せ", "やせ", "ダイエット", "細マッチョ", "腹筋割", "逆三角形", "vシェイプ", "顔周り", "姿勢よく")):
+        return "general"
+    if any(keyword in normalized for keyword in ("フォーム", "姿勢", "やり方", "コツ", "正しい", "効かない")):
+        return "form"
+    if any(keyword in normalized for keyword in ("やる気", "続かない", "めんど", "不安", "緊張", "モチベ", "サボ")):
+        return "motivation"
+    if any(keyword in normalized for keyword in ("痛い", "痛み", "怪我", "けが", "腰痛", "膝痛", "肩痛", "病院", "治療", "診断")):
+        return "injury"
+    if any(keyword in normalized for keyword in ("疲れ", "だるい", "休み", "回復", "筋肉痛", "寝不足", "睡眠", "ストレッチ")):
+        return "recovery"
+    if any(keyword in normalized for keyword in ("プロテイン", "クレアチン", "bcaa", "サプリ", "ホエイ", "ソイ")):
+        return "supplement"
+    if any(keyword in normalized for keyword in ("食事", "栄養", "protein", "たんぱく", "タンパク", "コンビニ", "カロリー", "増量", "減量", "お酒", "酒")):
+        return "nutrition"
+    if any(keyword in normalized for keyword in ("体脂肪", "体重", "身長", "目標設定", "目標を作", "バルク", "カット", "筋肥大", "脂肪減少")):
+        return "goal_strategy"
+    if any(keyword in normalized for keyword in ("目標", "プラン", "計画", "3ヶ月", "三ヶ月", "週何回", "ルーティン", "生活", "通学", "バイト", "30分", "時間")):
+        return "plan"
+    if detect_body_part(topic, message):
+        return "body_part"
     if any(keyword in normalized for keyword in ("停滞", "伸びない", "マンネリ", "plateau")):
         return "plateau"
     if any(keyword in normalized for keyword in ("部位", "分割", "split")):
@@ -76,11 +196,28 @@ def detect_topic(topic: str, message: str | None) -> str:
         return "strength"
     if any(keyword in normalized for keyword in ("きつめ", "追い込み", "強度", "ハード")):
         return "intensity"
-    if any(keyword in normalized for keyword in ("食事", "栄養", "protein", "たんぱく")):
-        return "nutrition"
     if any(keyword in normalized for keyword in ("今日", "メニュー", "おすすめ", "何やる")):
         return "today"
     return "free"
+
+
+def detect_body_part(topic: str, message: str | None) -> str | None:
+    normalized = _normalize_text(f"{topic} {message or ''}")
+    direct_keywords = {
+        "shoulder": ("肩", "三角筋", "ショルダー", "サイドレイズ", "リアレイズ"),
+        "chest": ("胸", "大胸筋", "ベンチプレス", "腕立て", "プッシュアップ"),
+        "back": ("背中", "広背筋", "懸垂", "チンニング", "ローイング"),
+        "legs": ("脚", "足", "下半身", "太もも", "お尻", "スクワット", "ランジ"),
+        "arms": ("腕", "二頭筋", "三頭筋", "力こぶ", "アームカール"),
+        "abs": ("腹", "腹筋", "体幹", "お腹", "プランク"),
+    }
+    for body_part, keywords in direct_keywords.items():
+        if any(keyword.lower() in normalized for keyword in keywords):
+            return body_part
+    for body_part, config in BODY_PART_MENUS.items():
+        if any(keyword.lower() in normalized for keyword in config["keywords"]):
+            return body_part
+    return None
 
 
 def infer_recent_focus(records: list[dict[str, Any]]) -> str | None:
@@ -95,7 +232,11 @@ def infer_recent_focus(records: list[dict[str, Any]]) -> str | None:
     return None
 
 
-def choose_menu(level: str | None, topic_key: str, recent_focus: str | None) -> dict[str, Any]:
+def choose_menu(level: str | None, topic_key: str, recent_focus: str | None, body_part: str | None = None) -> dict[str, Any]:
+    if body_part and body_part in BODY_PART_MENUS:
+        menus = BODY_PART_MENUS[body_part]["menus"]
+        return dict(menus.get(level or "", menus[DEFAULT_LEVEL]))
+
     preset = LEVEL_DEFAULTS.get(level or "", LEVEL_DEFAULTS[DEFAULT_LEVEL])
     menu = dict(preset.get(topic_key, preset["free"]))
 
@@ -116,7 +257,11 @@ def build_reason(
     today_records: int,
     recent_menu_names: list[str],
     recent_focus: str | None,
+    body_part: str | None = None,
 ) -> str:
+    if topic_key == "body_part" and body_part:
+        label = BODY_PART_MENUS[body_part]["label"]
+        return f"{label}を鍛えたい相談なので、初心者でもフォームを崩しにくく記録しやすい種目を選びました。"
     if topic_key == "recovery":
         return f"{user_name}さんは最近も継続できているので、今日は無理をしすぎず回復寄りにした方が続けやすいです。"
     if topic_key == "plateau":
@@ -129,6 +274,36 @@ def build_reason(
         return "部位分けの相談だったので、初心者でも組みやすい無理のない候補に寄せています。"
     if topic_key == "nutrition":
         return "食事の相談でも、まず続けやすい軽めの運動を添えると習慣化しやすいのでその前提で提案しています。"
+    if topic_key == "form":
+        return "フォームの相談なので、無理に回数を増やすより安全に確認しやすい内容を優先しました。"
+    if topic_key == "motivation":
+        return "やる気が低い日でも始めやすいように、心理的なハードルが低い内容を優先しました。"
+    if topic_key == "app_info":
+        return "アプリについての質問なので、メニュー提案よりもmuscloopでできることを直接説明します。"
+    if topic_key == "privacy":
+        return "プライバシーやデータの質問なので、公開範囲と安全方針を直接説明します。"
+    if topic_key == "injury":
+        return "痛みや怪我に関わる相談なので、原因を断定せず安全を優先します。"
+    if topic_key == "unsafe":
+        return "危険または不健康な内容なので、実行方法は案内せず安全な代替案を出します。"
+    if topic_key == "supplement":
+        return "サプリの相談なので、一般情報に留めて過度な期待や危険な使い方を避けます。"
+    if topic_key == "data_analysis":
+        return "記録や数値の分析相談なので、推測で断定せず、手元にある記録で分かる範囲と追加で必要な情報を分けて返します。"
+    if topic_key == "data_analysis":
+        return (
+            f"{user_name}さん、記録を使った分析ですね。\n"
+            "手元にある筋トレ記録から傾向は見られますが、食事ログ・体重・体脂肪など未入力の情報は推測で断定しません。\n"
+            "今ある記録で分かる範囲を整理し、足りない情報があれば追加で聞きながら次の調整案を出します。"
+        )
+    if topic_key == "progress":
+        return "成長や停滞の相談なので、記録の見方と安全な調整方針を返します。"
+    if topic_key == "plan":
+        return "生活や目標に合わせた相談なので、無理なく続けられる方針を優先します。"
+    if topic_key == "goal_strategy":
+        return "体型や目標設定の相談なので、情報不足を断定せず、必要情報と安全な考え方を返します。"
+    if topic_key == "general":
+        return "雑談や目的相談なので、特定メニューを押しつけず、考え方を短く返します。"
     if today_records > 0:
         return f"今日はすでに{today_records}件記録があるので、追加でも負担が大きすぎない内容にしました。"
     if streak_days >= 3:
@@ -145,6 +320,7 @@ def build_message(
     recommendation: dict[str, Any],
     reason: str,
     summary: dict[str, Any],
+    body_part: str | None = None,
 ) -> str:
     if recommendation["mins"] or recommendation["secs"]:
         menu_text = (
@@ -157,6 +333,81 @@ def build_message(
         menu_text = (
             f"{recommendation['menuName']} "
             f"{recommendation['count']}回 × {recommendation['sets']}セット"
+        )
+
+    if topic_key == "app_info":
+        return (
+            f"{user_name}さん、muscloopはAI相談、筋トレ記録、実績、通知で継続を支えるアプリです。\n"
+            "今日のメニュー相談からそのまま記録につなげられるので、初心者でも迷わず続けやすいのが特徴です。\n"
+            "今後はフレンドやランキング、Web公開、Apple Watch連携も強化していく予定です。"
+        )
+    if topic_key == "privacy":
+        return (
+            "muscloopでは、フレンドに見せる情報と本人だけの情報を分ける方針です。\n"
+            "体重・体脂肪・メモ・食事・HealthKit詳細・画像・通知トークンのような情報は、基本的に公開しない設計にしています。\n"
+            "API側もFirebase ID tokenで本人確認し、他人のuserIdを勝手に指定できない形へ移行しています。"
+        )
+    if topic_key == "injury":
+        return (
+            f"{user_name}さん、痛みがある場合は無理に筋トレを続けない方が安全です。\n"
+            "原因はここでは断定できないので、強い痛みや長引く痛みがあるなら専門家に相談してください。\n"
+            "今日は痛みのない範囲で休むか、軽いストレッチ程度にしておきましょう。"
+        )
+    if topic_key == "unsafe":
+        return (
+            "その内容は安全におすすめできません。\n"
+            "短期間で極端に体を変える方法や、健康を損なう可能性がある方法は避けましょう。\n"
+            "muscloopでは、食事・睡眠・無理のない運動を続ける方向でサポートします。"
+        )
+    if topic_key == "supplement":
+        return (
+            f"{user_name}さん、サプリはあくまで食事を補うものとして考えるのが安全です。\n"
+            "まずは普段の食事でたんぱく質を確保し、足りない時にプロテインなどを検討するくらいで十分です。\n"
+            "体調や持病がある場合、サプリの使用は専門家に確認してください。"
+        )
+    if topic_key == "progress":
+        return (
+            f"{user_name}さん、伸び悩みは誰にでもあります。\n"
+            "まずは記録を見て、重量・回数・セット数・休息のどこが詰まっているか確認しましょう。\n"
+            "毎回限界まで追い込むより、フォームを保てる範囲で少しずつ負荷を上げるのがおすすめです。"
+        )
+    if topic_key == "plan":
+        return (
+            f"{user_name}さん、忙しい中で続けるなら、完璧な計画よりも週2〜3回の短いメニューを固定するのがおすすめです。\n"
+            "まずは30分以内で、スクワット・腕立て・プランクのような全身に効く種目を組み合わせると続けやすいです。\n"
+            "具体的な曜日や使える時間を教えてくれたら、より現実的な週間プランにできます。"
+        )
+    if topic_key == "goal_strategy":
+        return (
+            f"{user_name}さん、体脂肪率や体重から正確な目標を作るには、現在の身長・体重・体脂肪率・目標期間・運動頻度が必要です。\n"
+            "ここでは断定せず、まずは3ヶ月で無理なく続けられる小さな目標にするのがおすすめです。\n"
+            "数値を教えてくれたら、減量・維持・筋肥大のどれを優先するか一緒に整理できます。"
+        )
+    if topic_key == "general":
+        return (
+            f"{user_name}さん、見た目を整えたいなら、まずは大きい筋肉を無理なく続けるのが近道です。\n"
+            "胸・背中・脚をバランスよく鍛えると姿勢やシルエットが変わりやすく、印象も良くなりやすいです。\n"
+            "具体的にメニューを組みたい時は、鍛えたい部位や使える道具を教えてください。"
+        )
+    if topic_key == "motivation":
+        return (
+            f"{user_name}さん、やる気が出ない日でも相談してくれた時点で一歩進んでいます。\n"
+            "今日は完璧にやるより、1分だけ体を動かすくらいで十分です。\n"
+            "できたら記録して、できなければ明日の自分に回しても大丈夫です。"
+        )
+    if topic_key == "form":
+        return (
+            f"{user_name}さん、フォームが不安な時は回数より安全を優先しましょう。\n"
+            "痛みがない範囲でゆっくり動き、鏡や動画で姿勢を確認するのがおすすめです。\n"
+            f"試すなら {menu_text} くらいの軽さから始めて、違和感があれば中止してください。"
+        )
+    if topic_key == "body_part" and body_part:
+        label = BODY_PART_MENUS[body_part]["label"]
+        tip = BODY_PART_MENUS[body_part]["tip"]
+        return (
+            f"{user_name}さん、{label}を鍛えたいなら今日は {menu_text} がおすすめです。\n"
+            f"{tip}\n"
+            "最初は軽めでフォームを優先して、きつければ回数やセット数を減らしてOKです。"
         )
 
     if topic_key == "recovery":
@@ -204,7 +455,8 @@ def _build_summary(records: list[dict[str, Any]]) -> tuple[dict[str, Any], list[
 def _fallback_ai_advice(context: AdviceContext) -> dict[str, Any]:
     summary, formatted_records, recent_menu_names, recent_focus = _build_summary(context.records)
     topic_key = detect_topic(context.topic, context.message)
-    recommendation = choose_menu(context.level, topic_key, recent_focus)
+    body_part = detect_body_part(context.topic, context.message)
+    recommendation = choose_menu(context.level, topic_key, recent_focus, body_part)
     reason = build_reason(
         user_name=context.user_name,
         topic_key=topic_key,
@@ -212,6 +464,7 @@ def _fallback_ai_advice(context: AdviceContext) -> dict[str, Any]:
         today_records=summary["todayRecords"],
         recent_menu_names=recent_menu_names,
         recent_focus=recent_focus,
+        body_part=body_part,
     )
     message_text = build_message(
         user_name=context.user_name,
@@ -219,9 +472,12 @@ def _fallback_ai_advice(context: AdviceContext) -> dict[str, Any]:
         recommendation=recommendation,
         reason=reason,
         summary=summary,
+        body_part=body_part,
     )
 
     return {
+        "responseType": topic_key,
+        "showRecordButton": topic_key in RECORDABLE_TOPIC_KEYS,
         "message": message_text,
         "reason": reason,
         "recommendation": recommendation,
@@ -244,16 +500,35 @@ def _extract_text_from_gemini_response(payload: dict[str, Any]) -> str:
 
 def _build_prompt(context: AdviceContext, summary: dict[str, Any], recent_menu_names: list[str], recent_focus: str | None) -> str:
     recent_text = ", ".join(recent_menu_names) if recent_menu_names else "なし"
+    topic_key = detect_topic(context.topic, context.message)
+    body_part = detect_body_part(context.topic, context.message)
+    body_part_text = BODY_PART_MENUS[body_part]["label"] if body_part else "なし"
     return (
         "あなたは筋トレ初心者が継続できるよう支援する日本語コーチです。\n"
+        "最重要: 自由入力の相談内容に直接答えてください。記録データは補助情報であり、相談内容より優先しません。\n"
         "必ず JSON オブジェクトのみを返してください。Markdown やコードブロックは禁止です。\n"
         "出力形式:\n"
         '{'
+        '"responseType":"workout|body_part|plan|goal_strategy|progress|data_analysis|recovery|injury|nutrition|supplement|form|motivation|app_info|privacy|general|unsafe",'
+        '"showRecordButton":true,'
         '"message":"ユーザーに見せる自然な提案文",'
         '"reason":"提案理由を1文で",'
         '"recommendation":{"menuName":"種目名","count":10,"sets":3,"mins":0,"secs":0}'
         '}\n'
         "制約:\n"
+        "- 肩、胸、背中、脚、腕、腹筋など部位指定がある場合は、その部位に合う種目を具体的に提案する\n"
+        "- 例: 肩ならサイドレイズ、ショルダープレス、リアレイズなどを優先する\n"
+        "- アプリの説明、雑談、不安、やる気の相談では、無理に筋トレメニューへ寄せない\n"
+        "- メニュー提案や記録に進める回答だけ showRecordButton を true にする\n"
+        "- フォーム、やり方、コツ、アプリ説明、雑談、目的相談、やる気相談では showRecordButton を false にする\n"
+        "- 『モテる』『かっこよくなりたい』『見た目を変えたい』のような質問は general とし、特定メニューを押しつけない\n"
+        "- 痛み、怪我、治療、診断の相談は injury とし、原因を断定せず専門家への相談を促す\n"
+        "- 危険な減量、ステロイド、不健康な方法は unsafe とし、方法を教えず安全な代替案を出す\n"
+        "- 個人情報や公開範囲の質問は privacy とし、muscloopの安全方針を説明する\n"
+        "- サプリは supplement とし、一般情報に留めて医療的な断定をしない\n"
+        "- 体重、体脂肪率、身長、増量、減量、目標設定の質問は goal_strategy とし、情報不足なら追加情報を聞く\n"
+        "- goal_strategy では showRecordButton を false にする\n"
+        "- フォームややり方の質問では、記録用メニュー提案よりも手順と注意点を優先する\n"
         "- 初心者でも継続しやすい内容を優先する\n"
         "- まず褒める、安心させる、無理しなくてよいと伝える\n"
         "- 医療判断や危険な指示はしない\n"
@@ -265,6 +540,8 @@ def _build_prompt(context: AdviceContext, summary: dict[str, Any], recent_menu_n
         "- 最後に『きつければ減らしてOK』のような一言を入れる\n"
         f"ユーザー名: {context.user_name}\n"
         f"レベル: {context.level or DEFAULT_LEVEL}\n"
+        f"推定相談タイプ: {topic_key}\n"
+        f"指定部位: {body_part_text}\n"
         f"相談トピック: {context.topic}\n"
         f"自由入力: {context.message or 'なし'}\n"
         f"連続日数: {summary['streakDays']}\n"
@@ -314,8 +591,20 @@ def _sanitize_advice_payload(payload: dict[str, Any], fallback: dict[str, Any]) 
 
     message = str(payload.get("message") or fallback["message"]).strip() or fallback["message"]
     reason = str(payload.get("reason") or fallback["reason"]).strip() or fallback["reason"]
+    fallback_response_type = str(fallback.get("responseType") or "workout").strip() or "workout"
+    response_type = str(payload.get("responseType") or fallback_response_type).strip() or fallback_response_type
+
+    if fallback_response_type not in RECORDABLE_TOPIC_KEYS:
+        response_type = fallback_response_type
+        show_record_button = False
+    else:
+        show_record_button = payload.get("showRecordButton", fallback.get("showRecordButton", True))
+        if not isinstance(show_record_button, bool):
+            show_record_button = bool(fallback.get("showRecordButton", True))
 
     return {
+        "responseType": response_type,
+        "showRecordButton": show_record_button,
         "message": message,
         "reason": reason,
         "recommendation": safe_recommendation,
@@ -344,14 +633,7 @@ def _load_local_env_once() -> None:
     _ENV_LOADED = True
 
 
-def _call_gemini(prompt: str) -> dict[str, Any]:
-    _load_local_env_once()
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is not set.")
-
+def _call_gemini_model(*, api_key: str, model_name: str, prompt: str) -> dict[str, Any]:
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{parse.quote(model_name)}:generateContent?key={parse.quote(api_key)}"
@@ -381,6 +663,29 @@ def _call_gemini(prompt: str) -> dict[str, Any]:
         raise RuntimeError(f"Gemini API network error: {exc.reason}") from exc
 
     return json.loads(raw)
+
+
+def _call_gemini(prompt: str) -> dict[str, Any]:
+    _load_local_env_once()
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    primary_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite").strip()
+
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set.")
+
+    model_names = [primary_model]
+    if fallback_model and fallback_model not in model_names:
+        model_names.append(fallback_model)
+
+    errors: list[str] = []
+    for model_name in model_names:
+        try:
+            return _call_gemini_model(api_key=api_key, model_name=model_name, prompt=prompt)
+        except RuntimeError as exc:
+            errors.append(f"{model_name}: {exc}")
+
+    raise RuntimeError("Gemini API request failed for all models. " + " | ".join(errors))
 
 
 def build_ai_advice(
