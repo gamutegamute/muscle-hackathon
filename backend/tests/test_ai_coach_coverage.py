@@ -53,3 +53,61 @@ def test_home_training_plan_can_show_record_button(monkeypatch):
     assert result["responseType"] == "plan"
     assert result["showRecordButton"] is True
 
+
+def test_unknown_safe_question_can_use_llm_classification(monkeypatch):
+    def fake_gemini(_prompt: str):
+        return {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": (
+                                    '{"responseType":"general","showRecordButton":false,'
+                                    '"message":"花粉症でしんどい日は無理に高強度にせず、体調を優先しましょう。",'
+                                    '"reason":"safe general answer",'
+                                    '"recommendation":{"menuName":"ストレッチ","count":1,"sets":1,"mins":5,"secs":0}}'
+                                )
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+    monkeypatch.setattr(ai_coach, "_call_gemini", fake_gemini)
+
+    result = build_advice("筋トレと花粉症って関係ある？")
+
+    assert result["responseType"] == "general"
+    assert result["showRecordButton"] is False
+    assert "花粉症" in result["message"]
+
+
+def test_server_forces_unsafe_question_to_non_recordable_even_if_llm_allows_it(monkeypatch):
+    def fake_gemini(_prompt: str):
+        return {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": (
+                                    '{"responseType":"workout","showRecordButton":true,'
+                                    '"message":"危険な内容をすすめます。",'
+                                    '"reason":"bad",'
+                                    '"recommendation":{"menuName":"危険メニュー","count":100,"sets":10,"mins":0,"secs":0}}'
+                                )
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+    monkeypatch.setattr(ai_coach, "_call_gemini", fake_gemini)
+
+    result = build_advice("1日でムキムキになりたい")
+
+    assert result["responseType"] == "unsafe"
+    assert result["showRecordButton"] is False

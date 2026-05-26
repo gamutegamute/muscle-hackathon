@@ -112,7 +112,45 @@ BODY_PART_MENUS = {
     },
 }
 
-RECORDABLE_TOPIC_KEYS = {"today", "body_part", "split", "strength", "intensity", "plateau", "plan"}
+ALLOWED_RESPONSE_TYPES = {
+    "workout",
+    "today",
+    "body_part",
+    "plan",
+    "split",
+    "strength",
+    "intensity",
+    "plateau",
+    "goal_strategy",
+    "progress",
+    "data_analysis",
+    "recovery",
+    "injury",
+    "nutrition",
+    "supplement",
+    "form",
+    "motivation",
+    "app_info",
+    "privacy",
+    "general",
+    "unsafe",
+}
+RECORDABLE_TOPIC_KEYS = {"today", "body_part", "split", "strength", "intensity", "plateau", "plan", "workout"}
+SERVER_FORCED_RESPONSE_TYPES = {
+    "unsafe",
+    "injury",
+    "privacy",
+    "app_info",
+    "form",
+    "nutrition",
+    "supplement",
+    "recovery",
+    "goal_strategy",
+    "progress",
+    "data_analysis",
+    "general",
+    "motivation",
+}
 
 
 @dataclass
@@ -503,13 +541,28 @@ def _build_prompt(context: AdviceContext, summary: dict[str, Any], recent_menu_n
     topic_key = detect_topic(context.topic, context.message)
     body_part = detect_body_part(context.topic, context.message)
     body_part_text = BODY_PART_MENUS[body_part]["label"] if body_part else "なし"
+    policy = (
+        "You are the AI trainer for muscloop. Answer the user's actual question first, in natural Japanese.\n"
+        "Do not force every answer into a workout menu. First classify the intent, then answer.\n"
+        "Return only one JSON object with responseType, showRecordButton, message, reason, and recommendation.\n"
+        "Allowed responseType values: workout, today, body_part, plan, split, strength, intensity, plateau, goal_strategy, progress, data_analysis, recovery, injury, nutrition, supplement, form, motivation, app_info, privacy, general, unsafe.\n"
+        "Use showRecordButton=true only when the user is asking for an actionable workout/menu that can be recorded now.\n"
+        "Use showRecordButton=false for form explanations, nutrition, supplements, pain/injury, privacy, app info, motivation, goal strategy, progress analysis, data analysis, and casual questions.\n"
+        "If the question is outside expected examples, still answer generally when safe. Use general or motivation instead of inventing an unsupported app feature.\n"
+        "For pain, injury, diagnosis, treatment, extreme dieting, steroids, doping, or unsafe requests, do not give risky instructions; explain that you cannot determine the cause here and suggest safe alternatives or professional consultation.\n"
+        "For app capability/privacy questions, only say what muscloop currently supports. Do not promise unavailable features.\n"
+        "For data analysis, distinguish known workout records from unknown food, body weight, body fat, sleep, or HealthKit data. Ask for missing information instead of guessing.\n"
+        "Keep message to 2-4 short Japanese sentences. Be friendly but not overly templated.\n"
+        "recommendation is required by the API, but it is only used when showRecordButton=true. For non-recordable answers, put a harmless placeholder based on the fallback.\n"
+    )
     return (
+        policy +
         "あなたは筋トレ初心者が継続できるよう支援する日本語コーチです。\n"
         "最重要: 自由入力の相談内容に直接答えてください。記録データは補助情報であり、相談内容より優先しません。\n"
         "必ず JSON オブジェクトのみを返してください。Markdown やコードブロックは禁止です。\n"
         "出力形式:\n"
         '{'
-        '"responseType":"workout|body_part|plan|goal_strategy|progress|data_analysis|recovery|injury|nutrition|supplement|form|motivation|app_info|privacy|general|unsafe",'
+        '"responseType":"workout|today|body_part|plan|split|strength|intensity|plateau|goal_strategy|progress|data_analysis|recovery|injury|nutrition|supplement|form|motivation|app_info|privacy|general|unsafe",'
         '"showRecordButton":true,'
         '"message":"ユーザーに見せる自然な提案文",'
         '"reason":"提案理由を1文で",'
@@ -593,14 +646,17 @@ def _sanitize_advice_payload(payload: dict[str, Any], fallback: dict[str, Any]) 
     reason = str(payload.get("reason") or fallback["reason"]).strip() or fallback["reason"]
     fallback_response_type = str(fallback.get("responseType") or "workout").strip() or "workout"
     response_type = str(payload.get("responseType") or fallback_response_type).strip() or fallback_response_type
+    if response_type not in ALLOWED_RESPONSE_TYPES:
+        response_type = "general"
 
-    if fallback_response_type not in RECORDABLE_TOPIC_KEYS:
+    if fallback_response_type in SERVER_FORCED_RESPONSE_TYPES:
         response_type = fallback_response_type
         show_record_button = False
     else:
         show_record_button = payload.get("showRecordButton", fallback.get("showRecordButton", True))
         if not isinstance(show_record_button, bool):
             show_record_button = bool(fallback.get("showRecordButton", True))
+        show_record_button = show_record_button and response_type in RECORDABLE_TOPIC_KEYS
 
     return {
         "responseType": response_type,
