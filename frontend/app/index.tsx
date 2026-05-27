@@ -7,7 +7,7 @@ import { Alert, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, Tex
 import { workoutData } from '@/app/globalState';
 import { getProfile } from '@/lib/api';
 import { logoutFromFirebase } from '@/lib/auth';
-import { clearGuestSessionMarker, ensureGuestUserId } from '@/lib/guest-session';
+import { clearGuestSessionMarker, startNewGuestSession } from '@/lib/guest-session';
 import { syncWorkoutData } from '@/lib/workout-sync';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -123,7 +123,7 @@ export default function App() {
       // Firebaseにログインしていない場合はそのままゲスト開始する。
     }
     workoutData.resetData({ sessionMode: 'logged_out' });
-    await ensureGuestUserId();
+    await startNewGuestSession();
     router.replace('/profile');
   };
   

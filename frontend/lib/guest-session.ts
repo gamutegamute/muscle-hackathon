@@ -22,6 +22,11 @@ export async function ensureGuestUserId() {
   return userId;
 }
 
+export async function startNewGuestSession() {
+  currentGuestUserId = generateGuestUserId();
+  return ensureGuestUserId();
+}
+
 export async function getStoredGuestUserId() {
   return currentGuestUserId;
 }
