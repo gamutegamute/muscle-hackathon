@@ -87,8 +87,22 @@ type RequestOptions = {
 const DEFAULT_BASE_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000';
 
-export const API_BASE_URL =
-  (process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, '');
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+
+  if (
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    configuredBaseUrl?.startsWith('http://')
+  ) {
+    return '/api';
+  }
+
+  return configuredBaseUrl || DEFAULT_BASE_URL;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl().replace(/\/+$/, '');
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
