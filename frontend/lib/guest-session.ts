@@ -13,32 +13,22 @@ function generateGuestUserId() {
 }
 
 export async function ensureGuestUserId() {
-  const storedUserId = await getStoredGuestUserId();
-  const userId = currentGuestUserId || storedUserId || generateGuestUserId();
+  const userId = currentGuestUserId || generateGuestUserId();
   currentGuestUserId = userId;
 
-  await AsyncStorage.setItem(GUEST_SESSION_KEY, userId);
+  await clearStoredGuestSession();
   workoutData.setSessionMode('guest');
   workoutData.setUserProfile({ userId });
   return userId;
 }
 
 export async function getStoredGuestUserId() {
-  if (currentGuestUserId) {
-    return currentGuestUserId;
-  }
-
-  try {
-    const userId = await AsyncStorage.getItem(GUEST_SESSION_KEY);
-    currentGuestUserId = userId || null;
-    return currentGuestUserId;
-  } catch {
-    return null;
-  }
+  return currentGuestUserId;
 }
 
 export async function restoreGuestSession() {
-  const userId = await getStoredGuestUserId();
+  await clearStoredGuestSession();
+  const userId = currentGuestUserId;
   if (!userId) {
     return null;
   }
@@ -50,7 +40,10 @@ export async function restoreGuestSession() {
 
 export async function clearGuestSessionMarker() {
   currentGuestUserId = null;
+  await clearStoredGuestSession();
+}
 
+async function clearStoredGuestSession() {
   try {
     await AsyncStorage.removeItem(GUEST_SESSION_KEY);
   } catch {
@@ -59,11 +52,20 @@ export async function clearGuestSessionMarker() {
 }
 
 export async function clearGuestSessionData() {
-  const userId = currentGuestUserId || (await getStoredGuestUserId());
+  const userId = currentGuestUserId;
 
   if (userId) {
-    await deleteGuestProfile(userId);
-    await removeAchievementProgress(userId);
+    try {
+      await deleteGuestProfile(userId);
+    } catch (error) {
+      console.warn('Failed to delete guest data from backend:', error);
+    }
+
+    try {
+      await removeAchievementProgress(userId);
+    } catch (error) {
+      console.warn('Failed to remove guest achievement progress:', error);
+    }
   }
 
   await clearGuestSessionMarker();
