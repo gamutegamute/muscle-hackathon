@@ -14,6 +14,7 @@ import {
   Vibration,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 
 import { workoutData } from '../globalState';
@@ -158,6 +159,7 @@ export default function DetailedRecordScreen() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [swTime, setSwTime] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [showWearableModal, setShowWearableModal] = useState(false);
 
   const countRef = useRef<FlatList>(null);
   const setsRef = useRef<FlatList>(null);
@@ -341,25 +343,35 @@ export default function DetailedRecordScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {activeTab === 'input' && (
-            <View style={styles.dateTimeRow}>
-              <View style={styles.dateControlGroup}>
-                <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
-                  <Text style={[styles.adjustBtnText, { color: theme }]}>-</Text>
-                </TouchableOpacity>
-                <View style={styles.dateBadge}>
-                  <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
+            <>
+              <View style={styles.dateTimeRow}>
+                <View style={styles.dateControlGroup}>
+                  <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
+                    <Text style={[styles.adjustBtnText, { color: theme }]}>-</Text>
+                  </TouchableOpacity>
+                  <View style={styles.dateBadge}>
+                    <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
+                  </View>
+                  <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
+                    <Text style={[styles.adjustBtnText, { color: theme }]}>+</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
-                  <Text style={[styles.adjustBtnText, { color: theme }]}>+</Text>
+                <View style={styles.dateBadge}>
+                  <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
+                </View>
+                <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
+                  <Text style={styles.currentBtnText}>現在</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.dateBadge}>
-                <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
-              </View>
-              <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
-                <Text style={styles.currentBtnText}>現在</Text>
+
+              <TouchableOpacity 
+                style={[styles.wearableBtn, { borderColor: theme }]} 
+                onPress={() => setShowWearableModal(true)}
+              >
+                <Ionicons name="watch-outline" size={20} color={theme} />
+                <Text style={[styles.wearableBtnText, { color: theme }]}>Apple Watch等から取得 (予定)</Text>
               </TouchableOpacity>
-            </View>
+            </>
           )}
 
           <View style={styles.tabContainer}>
@@ -502,6 +514,19 @@ export default function DetailedRecordScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={showWearableModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="watch" size={48} color={theme} style={{ marginBottom: 15 }} />
+            <Text style={styles.modalTitle}>スマートウォッチ連携</Text>
+            <Text style={styles.modalMessage}>今後のアップデートで実装予定です！</Text>
+            <TouchableOpacity style={[styles.modalCloseBtn, { backgroundColor: theme }]} onPress={() => setShowWearableModal(false)}>
+              <Text style={styles.modalCloseText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -541,6 +566,8 @@ const styles = StyleSheet.create({
   adjustBtnText: { fontSize: 18, fontWeight: 'bold' },
   currentBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
   currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
+  wearableBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingVertical: 12, marginBottom: 15, backgroundColor: COLORS.white },
+  wearableBtnText: { fontSize: 14, fontWeight: 'bold' },
   tabContainer: { flexDirection: 'row', backgroundColor: COLORS.grayBackground, borderRadius: 15, padding: 4, marginBottom: 20 },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
   activeTab: { backgroundColor: COLORS.white },
@@ -579,4 +606,10 @@ const styles = StyleSheet.create({
   controlBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   controlBtnText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
   inlineSaveBtn: { width: '100%', paddingVertical: 15, borderRadius: 12, marginTop: 25, alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', backgroundColor: COLORS.white, borderRadius: 20, padding: 25, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
+  modalMessage: { fontSize: 15, color: COLORS.grayText, textAlign: 'center', marginBottom: 25, lineHeight: 22 },
+  modalCloseBtn: { paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25, width: '80%', alignItems: 'center' },
+  modalCloseText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
 });

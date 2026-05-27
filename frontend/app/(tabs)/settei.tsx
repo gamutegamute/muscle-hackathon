@@ -76,11 +76,15 @@ function getInitialProfileState(): ProfileState {
   return {
     name: getDefaultName(),
     rank: getDefaultBadge(),
-    height: workoutData.userProfile?.height || '170',
-    weight: workoutData.userProfile?.weight || '65.5',
-    bodyFat: workoutData.userProfile?.bodyFat || '18.5',
+    height: workoutData.userProfile?.height ?? '',
+    weight: workoutData.userProfile?.weight ?? '',
+    bodyFat: workoutData.userProfile?.bodyFat ?? '',
     avatar: workoutData.userProfile?.avatar || null,
   };
+}
+
+function isBlankProfileValue(value: string | null | undefined) {
+  return !value || !value.trim();
 }
 
 export default function ProfileScreen() {
@@ -224,9 +228,9 @@ export default function ProfileScreen() {
       setProfile({
         name: previousProfile.name || '筋肉太郎',
         rank: previousBadge || '🥚 はじまりの一歩',
-        height: previousProfile.height || '170',
-        weight: previousProfile.weight || '65.5',
-        bodyFat: previousProfile.bodyFat || '18.5',
+        height: previousProfile.height ?? '',
+        weight: previousProfile.weight ?? '',
+        bodyFat: previousProfile.bodyFat ?? '',
         avatar: previousProfile.avatar || null,
       });
     }
@@ -617,8 +621,14 @@ const StatusItem = ({ label, value, unit, isEditing, onChange, themeColor }: Sta
       />
     ) : (
       <Text style={styles.statusValue}>
-        {value}
-        <Text style={styles.statusUnit}> {unit}</Text>
+        {isBlankProfileValue(value) ? (
+          <Text style={styles.statusPlaceholder}>未設定</Text>
+        ) : (
+          <>
+            {value}
+            <Text style={styles.statusUnit}> {unit}</Text>
+          </>
+        )}
       </Text>
     )}
   </View>
@@ -699,6 +709,7 @@ const styles = StyleSheet.create({
   statusItem: { alignItems: 'center', flex: 1 },
   statusLabel: { fontSize: 12, color: COLORS.grayText, marginBottom: 5 },
   statusValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  statusPlaceholder: { fontSize: 16, fontWeight: 'normal', color: COLORS.grayText },
   statusUnit: { fontSize: 12, fontWeight: 'normal' },
   statusInput: { fontSize: 18, fontWeight: 'bold', borderBottomWidth: 1, padding: 0, textAlign: 'center', width: '80%' },
   menuSection: {

@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState, useRef } from 'react';
+import { Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, Pressable } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { workoutData } from '../globalState';
@@ -38,6 +38,26 @@ export default function HomeScreen() {
   const [isHoursFormat, setIsHoursFormat] = useState(false);
   const [todayRecords, setTodayRecords] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 10,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 10,
+    }).start();
+  };
 
   // 画面に戻ってきた時のデータ更新処理
   useFocusEffect(
@@ -245,14 +265,17 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
-          style={[styles.graphButton, { backgroundColor: theme }]} 
-          onPress={() => router.push('/graph')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="stats-chart" size={24} color="#FFF" />
-          <Text style={styles.graphButtonText}>トレーニンググラフを見る</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <Pressable 
+            style={[styles.graphButton, { backgroundColor: theme }]} 
+            onPress={() => router.push('/graph')}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          >
+            <Ionicons name="stats-chart" size={24} color="#FFF" />
+            <Text style={styles.graphButtonText}>トレーニンググラフを見る</Text>
+          </Pressable>
+        </Animated.View>
 
       </ScrollView>
     </SafeAreaView>

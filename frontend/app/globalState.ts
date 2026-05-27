@@ -97,10 +97,10 @@ export const workoutData = {
   userProfile: {
     userId: DEFAULT_USER_ID,
     name: 'ゲスト',
-    age: '20',
-    height: '170',
-    weight: '65.5',
-    bodyFat: '18.5',
+    age: '',
+    height: '',
+    weight: '',
+    bodyFat: '',
     avatar: null,
   } as UserProfile,
 
@@ -196,10 +196,10 @@ export const workoutData = {
     this.userProfile = {
       userId: currentUserId,
       name: 'ゲスト',
-      age: '20',
-      height: '170',
-      weight: '65.5',
-      bodyFat: '18.5',
+      age: '',
+      height: '',
+      weight: '',
+      bodyFat: '',
       avatar: null,
     };
     this.colorListeners.forEach((listener) => listener(this.themeColor));

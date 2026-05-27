@@ -68,10 +68,10 @@ export async function syncWorkoutData(options?: { showAlert?: boolean }) {
       workoutData.setUserProfile({
         userId: profile.userId,
         name: profile.name ?? workoutData.userProfile.name,
-        age: profile.age != null ? String(profile.age) : workoutData.userProfile.age,
-        height: profile.height != null ? String(profile.height) : workoutData.userProfile.height,
-        weight: profile.weight != null ? String(profile.weight) : workoutData.userProfile.weight,
-        bodyFat: profile.bodyFat != null ? String(profile.bodyFat) : workoutData.userProfile.bodyFat,
+        age: profile.age != null ? String(profile.age) : '',
+        height: profile.height != null ? String(profile.height) : '',
+        weight: profile.weight != null ? String(profile.weight) : '',
+        bodyFat: profile.bodyFat != null ? String(profile.bodyFat) : '',
         avatar: profile.avatar ?? workoutData.userProfile.avatar,
       });
     } catch {
@@ -113,13 +113,26 @@ export async function saveProfileToBackend(profile: {
     console.warn('Failed to get Expo push token:', error);
   }
 
+  const normalizeOptionalNumericField = (value?: string) => {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return null;
+    }
+
+    return Number(trimmedValue);
+  };
+
   await upsertProfile({
     userId,
     name: profile.name,
-    age: profile.age ? Number(profile.age) : undefined,
-    height: profile.height ? Number(profile.height) : undefined,
-    weight: profile.weight ? Number(profile.weight) : undefined,
-    bodyFat: profile.bodyFat ? Number(profile.bodyFat) : undefined,
+    age: normalizeOptionalNumericField(profile.age),
+    height: normalizeOptionalNumericField(profile.height),
+    weight: normalizeOptionalNumericField(profile.weight),
+    bodyFat: normalizeOptionalNumericField(profile.bodyFat),
     expoPushToken,
     avatar: profile.avatar ?? workoutData.userProfile.avatar,
     themeColor: profile.themeColor ?? workoutData.themeColor,
