@@ -24,6 +24,7 @@ type WorkoutSummary = {
 
 type UserProfile = {
   userId: string;
+  friendId?: string;
   name: string;
   age: string;
   height: string;
@@ -99,6 +100,7 @@ export const workoutData = {
 
   userProfile: {
     userId: DEFAULT_USER_ID,
+    friendId: '',
     name: 'ゲスト',
     age: '',
     height: '',
@@ -218,6 +220,7 @@ export const workoutData = {
     this.sessionMode = options?.sessionMode ?? 'logged_out';
     this.userProfile = {
       userId: nextUserId,
+      friendId: '',
       name: 'ゲスト',
       age: '',
       height: '',

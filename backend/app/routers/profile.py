@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -8,6 +9,26 @@ from app.schemas.profile import ProfileCreate
 from app.schemas.profile_update import ProfileUpdate
 
 router = APIRouter(prefix="/profile", tags=["profile"])
+
+
+def normalize_friend_id(value: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_]", "", value).lower()
+    return normalized[:30]
+
+
+def generate_default_friend_id(user_id: str, name: str | None = None) -> str:
+    name_part = normalize_friend_id(name or "")
+    uid_part = normalize_friend_id(user_id)[-8:] or "user"
+    if name_part and len(name_part) >= 3:
+        return f"{name_part[:16]}_{uid_part}"[:30]
+    return f"mlp_{uid_part}"[:30]
+
+
+def assert_unique_friend_id(friend_id: str, user_id: str):
+    docs = db.collection("users").where("friendId", "==", friend_id).limit(1).stream()
+    for doc in docs:
+        if doc.id != user_id:
+            raise HTTPException(status_code=409, detail="friendId already exists")
 
 
 def save_user(user_id: str, data: dict):
@@ -38,9 +59,12 @@ def delete_guest_user_data(user_id: str) -> int:
 def create_profile(profile: ProfileCreate, current_user: CurrentUser = Depends(get_current_user_optional)):
     data = profile.model_dump()
     user_id = resolve_user_id(data["userId"], current_user)
+    friend_id = normalize_friend_id(data.get("friendId") or "") or generate_default_friend_id(user_id, data["name"])
+    assert_unique_friend_id(friend_id, user_id)
 
     user_data = {
         "userId": user_id,
+        "friendId": friend_id,
         "name": data["name"],
         "age": data["age"],
         "height": data["height"],
@@ -67,7 +91,11 @@ def get_profile(user_id: str, current_user: CurrentUser = Depends(get_current_us
     if not data:
         raise HTTPException(status_code=404, detail="user not found")
 
-    return {**data, "userId": resolved_user_id}
+    friend_id = data.get("friendId") or generate_default_friend_id(resolved_user_id, data.get("name"))
+    if not data.get("friendId"):
+        update_user(resolved_user_id, {"friendId": friend_id, "updatedAt": datetime.utcnow()})
+
+    return {**data, "userId": resolved_user_id, "friendId": friend_id}
 
 
 @router.patch("/{user_id}")
@@ -81,6 +109,12 @@ def update_profile(user_id: str, profile: ProfileUpdate, current_user: CurrentUs
     update_data = profile.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="no profile fields to update")
+
+    if "friendId" in update_data and update_data["friendId"] is not None:
+        update_data["friendId"] = normalize_friend_id(update_data["friendId"])
+        if len(update_data["friendId"]) < 3:
+            raise HTTPException(status_code=400, detail="friendId must be at least 3 characters")
+        assert_unique_friend_id(update_data["friendId"], resolved_user_id)
 
     update_data["updatedAt"] = datetime.utcnow()
     update_user(resolved_user_id, update_data)

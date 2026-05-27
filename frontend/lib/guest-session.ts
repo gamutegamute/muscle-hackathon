@@ -17,7 +17,7 @@ export async function ensureGuestUserId() {
   currentGuestUserId = userId;
 
   await clearStoredGuestSession();
-  workoutData.setSessionMode('guest');
+  workoutData.resetData({ userId, sessionMode: 'guest' });
   workoutData.setUserProfile({ userId });
   return userId;
 }

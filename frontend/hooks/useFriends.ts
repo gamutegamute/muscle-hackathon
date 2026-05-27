@@ -1,170 +1,142 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+import {
+  type ApiFriend,
+  approveFriendRequest,
+  getFriendRequests,
+  getFriends,
+  rejectFriendRequest,
+  searchFriends,
+  sendFriendRequest,
+} from '@/lib/api';
 
 export interface Friend {
   id: string;
+  friendId: string;
   name: string;
   avatar: string | null;
   rank: string;
   consecutiveDays: number;
-  totalTime: number; // in minutes
+  totalTime: number;
   achievementCount: number;
-  recentActivity: string[]; // e.g., ["ベンチプレス 3セット", "スクワット 30回"]
+  recentActivity: string[];
 }
 
 export interface FriendRequest {
   id: string;
   userId: string;
+  friendId: string;
   name: string;
   avatar: string | null;
   rank: string;
 }
 
-// Dummy Data
-const DUMMY_FRIENDS: Friend[] = [
-  {
-    id: 'f1',
-    name: '筋肉太郎',
-    avatar: 'https://i.pravatar.cc/150?img=11',
-    rank: '🔥 マッスルマスター',
-    consecutiveDays: 34,
-    totalTime: 1250,
-    achievementCount: 15,
-    recentActivity: ['ベンチプレス 3セット', 'スクワット 30回', 'プランク 3分'],
-  },
-  {
-    id: 'f2',
-    name: 'マッチョマン',
-    avatar: 'https://i.pravatar.cc/150?img=33',
-    rank: '💪 鋼の肉体',
-    consecutiveDays: 12,
-    totalTime: 420,
-    achievementCount: 5,
-    recentActivity: ['ランニング 5km', '腕立て伏せ 50回'],
-  },
-  {
-    id: 'f3',
-    name: 'フィットネス花子',
-    avatar: 'https://i.pravatar.cc/150?img=47',
-    rank: '🏃‍♀️ スピードスター',
-    consecutiveDays: 89,
-    totalTime: 3600,
-    achievementCount: 28,
-    recentActivity: ['ヨガ 45分', '腹筋ローラー 20回'],
-  },
-];
+function toFriend(friend: ApiFriend): Friend {
+  return {
+    id: friend.userId,
+    friendId: friend.friendId,
+    name: friend.name,
+    avatar: friend.avatar ?? null,
+    rank: friend.rank ?? '',
+    consecutiveDays: friend.consecutiveDays ?? 0,
+    totalTime: friend.totalTime ?? 0,
+    achievementCount: friend.achievementCount ?? 0,
+    recentActivity: friend.recentActivity ?? [],
+  };
+}
 
-const DUMMY_REQUESTS: FriendRequest[] = [
-  {
-    id: 'r1',
-    userId: 'u99',
-    name: 'プロテイン佐藤',
-    avatar: 'https://i.pravatar.cc/150?img=12',
-    rank: '🥚 はじまりの一歩',
-  },
-  {
-    id: 'r2',
-    userId: 'u100',
-    name: 'ダンベル鈴木',
-    avatar: 'https://i.pravatar.cc/150?img=60',
-    rank: '🥉 ブロンズマッスル',
-  },
-];
-
-const ALL_USERS: Friend[] = [
-  ...DUMMY_FRIENDS,
-  {
-    id: 'u99',
-    name: 'プロテイン佐藤',
-    avatar: 'https://i.pravatar.cc/150?img=12',
-    rank: '🥚 はじまりの一歩',
-    consecutiveDays: 2,
-    totalTime: 45,
-    achievementCount: 1,
-    recentActivity: ['ウォーキング 20分'],
-  },
-  {
-    id: 'u100',
-    name: 'ダンベル鈴木',
-    avatar: 'https://i.pravatar.cc/150?img=60',
-    rank: '🥉 ブロンズマッスル',
-    consecutiveDays: 15,
-    totalTime: 800,
-    achievementCount: 8,
-    recentActivity: ['デッドリフト 3セット'],
-  },
-  {
-    id: 'u101',
-    name: 'ジムの主',
-    avatar: 'https://i.pravatar.cc/150?img=68',
-    rank: '👑 ジムの主',
-    consecutiveDays: 150,
-    totalTime: 8500,
-    achievementCount: 40,
-    recentActivity: ['懸垂 100回', 'スクワット 100kg'],
-  },
-];
+function toFriendRequest(friend: ApiFriend): FriendRequest {
+  return {
+    id: friend.userId,
+    userId: friend.userId,
+    friendId: friend.friendId,
+    name: friend.name,
+    avatar: friend.avatar ?? null,
+    rank: friend.rank ?? '',
+  };
+}
 
 export function useFriends() {
-  const [friends, setFriends] = useState<Friend[]>(DUMMY_FRIENDS);
-  const [requests, setRequests] = useState<FriendRequest[]>(DUMMY_REQUESTS);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<string[]>([]);
-  
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get single friend
-  const getFriendById = useCallback((id: string) => {
-    return friends.find(f => f.id === id) || ALL_USERS.find(u => u.id === id);
-  }, [friends]);
-
-  // Search users
-  const searchUsers = useCallback(async (query: string): Promise<Friend[]> => {
+  const refreshFriends = useCallback(async () => {
     setIsLoading(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 600));
-    setIsLoading(false);
-    
-    if (!query.trim()) return [];
-    
-    const lowerQuery = query.toLowerCase();
-    return ALL_USERS.filter(
-      u => u.name.toLowerCase().includes(lowerQuery) || u.id.toLowerCase() === lowerQuery
-    );
+    try {
+      const [friendsResponse, requestsResponse] = await Promise.all([
+        getFriends(),
+        getFriendRequests(),
+      ]);
+      setFriends(friendsResponse.map(toFriend));
+      setRequests(requestsResponse.map(toFriendRequest));
+    } catch (error) {
+      console.warn('Failed to load friends:', error);
+      setFriends([]);
+      setRequests([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Send friend request
+  useEffect(() => {
+    void refreshFriends();
+  }, [refreshFriends]);
+
+  const getFriendById = useCallback(
+    (id: string) => friends.find((friend) => friend.id === id),
+    [friends],
+  );
+
+  const searchUsers = useCallback(async (query: string): Promise<Friend[]> => {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 3) {
+      return [];
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await searchFriends(trimmedQuery);
+      return response.map(toFriend);
+    } catch (error) {
+      console.warn('Failed to search friends:', error);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const sendRequest = useCallback(async (userId: string) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setSentRequests(prev => [...prev, userId]);
-    setIsLoading(false);
+    try {
+      await sendFriendRequest(userId);
+      setSentRequests((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Approve request
   const approveRequest = useCallback(async (requestId: string) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const req = requests.find(r => r.id === requestId);
-    if (req) {
-      const newUser = ALL_USERS.find(u => u.id === req.userId);
-      if (newUser && !friends.some(f => f.id === newUser.id)) {
-        setFriends(prev => [...prev, newUser]);
-      }
+    try {
+      await approveFriendRequest(requestId);
+      await refreshFriends();
+    } finally {
+      setIsLoading(false);
     }
-    
-    setRequests(prev => prev.filter(r => r.id !== requestId));
-    setIsLoading(false);
-  }, [requests, friends]);
+  }, [refreshFriends]);
 
-  // Reject request
   const rejectRequest = useCallback(async (requestId: string) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setRequests(prev => prev.filter(r => r.id !== requestId));
-    setIsLoading(false);
-  }, []);
+    try {
+      await rejectFriendRequest(requestId);
+      await refreshFriends();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshFriends]);
 
-  // Rankings
   const getRankingByTotalTime = useCallback(() => {
     return [...friends].sort((a, b) => b.totalTime - a.totalTime);
   }, [friends]);
@@ -178,6 +150,7 @@ export function useFriends() {
     requests,
     sentRequests,
     isLoading,
+    refreshFriends,
     getFriendById,
     searchUsers,
     sendRequest,

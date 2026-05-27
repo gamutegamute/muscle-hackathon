@@ -7,6 +7,7 @@ from app.schemas.common import CamelModel
 
 class ProfileUpdate(CamelModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    friendId: Optional[str] = Field(default=None, min_length=3, max_length=30)
     age: Optional[int] = Field(default=None, ge=0, le=130)
     height: Optional[float] = Field(default=None, ge=0, le=300)
     weight: Optional[float] = Field(default=None, ge=0, le=500)

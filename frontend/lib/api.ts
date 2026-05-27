@@ -4,6 +4,7 @@ import { auth } from '@/lib/firebase-client';
 
 export type ApiProfile = {
   userId: string;
+  friendId?: string | null;
   name: string;
   age?: number | null;
   height?: number | null;
@@ -14,6 +15,18 @@ export type ApiProfile = {
   themeColor?: string | null;
   equippedBadge?: string | null;
   isVibrationEnabled?: boolean | null;
+};
+
+export type ApiFriend = {
+  userId: string;
+  friendId: string;
+  name: string;
+  avatar?: string | null;
+  rank?: string | null;
+  consecutiveDays: number;
+  totalTime: number;
+  achievementCount: number;
+  recentActivity: string[];
 };
 
 export type ApiRecord = {
@@ -41,8 +54,8 @@ export type ApiSummary = {
   todayTotalMinutes: number;
   streakDays: number;
   latestRecord: ApiRecord | null;
-  dailyRecords: Array<{ date: string; minutes?: number; count?: number }>;
-  menuSummary: Array<{ menuName: string; totalCount: number }>;
+  dailyRecords: { date: string; minutes?: number; count?: number }[];
+  menuSummary: { menuName: string; totalCount: number }[];
 };
 
 export type ApiAdvice = {
@@ -125,11 +138,45 @@ export async function deleteGuestProfile(userId: string) {
   });
 }
 
+export async function getFriends() {
+  return request<ApiFriend[]>('/friends');
+}
+
+export async function getFriendRequests() {
+  return request<ApiFriend[]>('/friends/requests');
+}
+
+export async function searchFriends(query: string) {
+  return request<ApiFriend[]>(`/friends/search?query=${encodeURIComponent(query)}`);
+}
+
+export async function sendFriendRequest(toUserId: string) {
+  return request<{ message: string }>('/friends/request', {
+    method: 'POST',
+    body: { toUserId },
+  });
+}
+
+export async function approveFriendRequest(friendUserId: string) {
+  return request<{ message: string }>('/friends/approve', {
+    method: 'POST',
+    body: { friendUserId },
+  });
+}
+
+export async function rejectFriendRequest(friendUserId: string) {
+  return request<{ message: string }>('/friends/reject', {
+    method: 'POST',
+    body: { friendUserId },
+  });
+}
+
 export async function upsertProfile(profile: ApiProfile) {
   try {
     await getProfile(profile.userId);
     return updateProfile(profile.userId, {
       name: profile.name,
+      friendId: profile.friendId,
       age: profile.age,
       height: profile.height,
       weight: profile.weight,

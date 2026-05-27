@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import * as Clipboard from 'expo-clipboard';
 
 import { workoutData } from '../globalState';
 import { logoutFromFirebase } from '@/lib/auth';
@@ -316,6 +317,16 @@ export default function ProfileScreen() {
     void persistProfileState(undefined, { syncAfterSave: false, themeColor: nextTheme.color });
   };
 
+  const handleCopyFriendId = async () => {
+    const friendId = workoutData.userProfile.friendId;
+    if (!friendId) {
+      return;
+    }
+
+    await Clipboard.setStringAsync(friendId);
+    Alert.alert('コピーしました', `ID: ${friendId}`);
+  };
+
   const handleLogout = async () => {
     try {
       if (workoutData.isGuestUser()) {
@@ -448,6 +459,17 @@ export default function ProfileScreen() {
               </>
             )}
           </View>
+
+          {workoutData.sessionMode === 'registered' && workoutData.userProfile.friendId ? (
+            <View style={styles.friendIdBadge}>
+              <Ionicons name="id-card-outline" size={14} color={theme} />
+              <Text style={styles.friendIdText}>ID: {workoutData.userProfile.friendId}</Text>
+              <TouchableOpacity style={[styles.copyIdButton, { borderColor: theme }]} onPress={handleCopyFriendId}>
+                <Ionicons name="copy-outline" size={14} color={theme} />
+                <Text style={[styles.copyIdText, { color: theme }]}>コピー</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.rankBadge, { borderColor: COLORS.accent }]}
@@ -692,6 +714,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.white,
   },
   nameContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  friendIdBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.white, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginBottom: 8 },
+  friendIdText: { color: COLORS.grayText, fontSize: 12, fontWeight: '600' },
+  copyIdButton: { flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3, marginLeft: 4 },
+  copyIdText: { fontSize: 11, fontWeight: 'bold' },
   userName: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
   nameInput: { fontSize: 22, fontWeight: 'bold', borderBottomWidth: 1, padding: 0, textAlign: 'center', minWidth: 120 },
   editNameBtn: { marginLeft: 8, padding: 4 },

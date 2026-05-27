@@ -6,6 +6,7 @@ import { Alert, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, Tex
 
 import { workoutData } from '@/app/globalState';
 import { getProfile } from '@/lib/api';
+import { logoutFromFirebase } from '@/lib/auth';
 import { clearGuestSessionMarker, ensureGuestUserId } from '@/lib/guest-session';
 import { syncWorkoutData } from '@/lib/workout-sync';
 
@@ -116,6 +117,12 @@ export default function App() {
   );
 
   const handleGuestLogin = async () => {
+    try {
+      await logoutFromFirebase();
+    } catch {
+      // Firebaseにログインしていない場合はそのままゲスト開始する。
+    }
+    workoutData.resetData({ sessionMode: 'logged_out' });
     await ensureGuestUserId();
     router.replace('/profile');
   };

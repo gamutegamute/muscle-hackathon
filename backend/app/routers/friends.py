@@ -1,144 +1,224 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.auth import get_current_user  # 🔑 ガチ認証Dependency
-from app.firebase import db
-from app.schemas.user import FriendProfileResponse
 from typing import List
-from app.schemas.user import FriendProfileResponse, FriendApproveRequest
-from app.schemas.user import FriendProfileResponse, FriendApproveRequest, FriendRequestRequest
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from firebase_admin import firestore
+
+from app.auth import get_current_user
+from app.firebase import db
+from app.routers.profile import generate_default_friend_id, update_user
+from app.schemas.user import (
+    FriendApproveRequest,
+    FriendProfileResponse,
+    FriendRejectRequest,
+    FriendRequestRequest,
+)
+from app.services.records_summary import build_records_summary, format_record
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
+
+def get_user_doc(user_id: str) -> dict | None:
+    doc = db.collection("users").document(user_id).get()
+    return doc.to_dict() if doc.exists else None
+
+
+def get_user_records(user_id: str) -> list[dict]:
+    docs = db.collection("records").where("userId", "==", user_id).stream()
+    return [doc.to_dict() for doc in docs]
+
+
+def build_public_profile(user_id: str) -> FriendProfileResponse | None:
+    user_data = get_user_doc(user_id)
+    if not user_data:
+        return None
+
+    friend_id = user_data.get("friendId") or generate_default_friend_id(user_id, user_data.get("name"))
+    if not user_data.get("friendId"):
+        update_user(user_id, {"friendId": friend_id, "updatedAt": firestore.SERVER_TIMESTAMP})
+
+    records = get_user_records(user_id)
+    summary = build_records_summary(user_id, records)
+    recent_records = [format_record(record) for record in records]
+    recent_records.sort(key=lambda record: record.get("createdAt") or "", reverse=True)
+    recent_activity = [
+        f"{record.get('menuName') or 'トレーニング'} {record.get('minutes', 0)}分"
+        for record in recent_records[:3]
+    ]
+
+    name = user_data.get("name") or user_data.get("displayName") or "名前なし"
+    avatar = user_data.get("avatar") or user_data.get("photoURL")
+    rank = user_data.get("equippedBadge") or user_data.get("rank") or ""
+
+    return FriendProfileResponse(
+        userId=user_id,
+        friendId=friend_id,
+        name=name,
+        avatar=avatar,
+        rank=rank,
+        consecutiveDays=summary.get("streakDays", 0),
+        totalTime=int(summary.get("totalMinutes", 0) or 0),
+        achievementCount=int(user_data.get("achievementCount") or 0),
+        recentActivity=recent_activity,
+        displayName=name,
+        photoURL=avatar,
+        streakDays=summary.get("streakDays", 0),
+        statusMessage=user_data.get("statusMessage", ""),
+    )
+
+
 @router.get("", response_model=List[FriendProfileResponse])
-async def get_friends_list(
-    # 🔒 ログイン必須ゲート
-    current_uid: str = Depends(get_current_user) 
-):
+async def get_friends_list(current_uid: str = Depends(get_current_user)):
     try:
-        # 1. Firestoreの `users/{current_uid}/friends` サブコレクションからドキュメントをすべて取得
         friend_docs = db.collection("users").document(current_uid).collection("friends").stream()
-        
-        # 2. ステータスが "accepted"（承認済み）の相手のUIDだけを抽出する
-        friend_ids = []
-        for doc in friend_docs:
-            doc_data = doc.to_dict() or {}
-            # ⭕️ ここでチェック！ status が "accepted" の人だけをリストに入れます
-            if doc_data.get("status") == "accepted":
-                friend_ids.append(doc.id)
+        friend_ids = [
+            doc.id
+            for doc in friend_docs
+            if (doc.to_dict() or {}).get("status") == "accepted"
+        ]
 
-        # 承認済みのフレンドが1人もいない場合は空配列を返す
-        if not friend_ids:
-            return []
-
-        # 3. 取得したフレンドたちのプロフィール情報を `users` コレクションから一括取得
-        friends_profiles = []
-        for f_id in friend_ids:
-            user_doc = db.collection("users").document(f_id).get()
-            if user_doc.exists:
-                user_data = user_doc.to_dict() or {}
-                
-                # 必要な安全なデータだけを抽出し、スキーマに当てはめる
-                profile = FriendProfileResponse(
-                    userId=f_id,
-                    displayName=user_data.get("displayName", "名無しのマッチョ"),
-                    photoURL=user_data.get("photoURL"),
-                    streakDays=user_data.get("streakDays", 0),
-                    statusMessage=user_data.get("statusMessage", "")
-                )
-                friends_profiles.append(profile)
-
-        return friends_profiles
-
-    except Exception as e:
+        profiles = []
+        for friend_id in friend_ids:
+            profile = build_public_profile(friend_id)
+            if profile:
+                profiles.append(profile)
+        return profiles
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"フレンド一覧の取得に失敗しました: {str(e)}"
-        )
-    
-@router.post("/approve", status_code=status.HTTP_200_OK)
-async def approve_friend_request(
-    request: FriendApproveRequest,
-    current_uid: str = Depends(get_current_user)  # 🔒 ログイン必須（承認する側のBさん）
-):
+            detail=f"failed to get friends: {str(exc)}",
+        ) from exc
+
+
+@router.get("/requests", response_model=List[FriendProfileResponse])
+async def get_friend_requests(current_uid: str = Depends(get_current_user)):
     try:
-        friend_uid = request.friendUserId  # 申請をくれた側（Aさん）のUID
+        request_docs = db.collection("users").document(current_uid).collection("friendRequests").stream()
+        request_ids = [
+            doc.id
+            for doc in request_docs
+            if (doc.to_dict() or {}).get("status") == "pending"
+        ]
 
-        # 自分自身を承認しようとしている場合はバグなので弾く
-        if current_uid == friend_uid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="自分自身の申請を承認することはできません。"
-            )
-
-        # 🤝 Firestoreのトランザクション（バッチ処理）を開始
-        batch = db.batch()
-
-        # ① 承認した側（自分：Bさん）のサブコレクションに、相手を「accepted」で保存
-        my_friend_ref = db.collection("users").document(current_uid).collection("friends").document(friend_uid)
-        batch.set(my_friend_ref, {"status": "accepted"})
-
-        # ② 申請した側（相手：Aさん）のサブコレクションのステータスも「accepted」に更新
-        their_friend_ref = db.collection("users").document(friend_uid).collection("friends").document(current_uid)
-        batch.set(their_friend_ref, {"status": "accepted"}, merge=True)
-
-        # 2つの書き込みを同時に実行（鉄壁のアトミック処理！）
-        batch.commit()
-
-        return {"message": "フレンド申請を承認しました！お互いにフレンドになりました。"}
-
-    except HTTPException:
-        # 400エラー（自分自身の承認など）はそのままフロントに投げる
-        raise
-    except Exception as e:
-        # それ以外のシステムエラー（Firestoreの通信失敗など）は500で返す
+        profiles = []
+        for requester_id in request_ids:
+            profile = build_public_profile(requester_id)
+            if profile:
+                profiles.append(profile)
+        return profiles
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"フレンド申請の承認に失敗しました: {str(e)}"
-        )
-    
+            detail=f"failed to get friend requests: {str(exc)}",
+        ) from exc
+
+
+@router.get("/search", response_model=List[FriendProfileResponse])
+async def search_users(
+    query: str = Query(min_length=3, max_length=100),
+    current_uid: str = Depends(get_current_user),
+):
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return []
+
+    matches: dict[str, FriendProfileResponse] = {}
+    direct_doc = db.collection("users").document(query.strip()).get()
+    if direct_doc.exists and direct_doc.id != current_uid:
+        profile = build_public_profile(direct_doc.id)
+        if profile:
+            matches[profile.userId] = profile
+
+    friend_id_docs = (
+        db.collection("users")
+        .where("friendId", "==", normalized_query)
+        .limit(5)
+        .stream()
+    )
+    for doc in friend_id_docs:
+        if doc.id == current_uid:
+            continue
+        profile = build_public_profile(doc.id)
+        if profile:
+            matches[profile.userId] = profile
+
+    return list(matches.values())
+
+
 @router.post("/request", status_code=status.HTTP_201_CREATED)
 async def send_friend_request(
     request: FriendRequestRequest,
-    current_uid: str = Depends(get_current_user)  # 🔒 ログイン必須（申請を送る側のAさん）
+    current_uid: str = Depends(get_current_user),
 ):
-    try:
-        to_uid = request.toUserId  # 申請相手（Bさん）のUID
+    to_uid = request.toUserId
+    if current_uid == to_uid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot request yourself")
 
-        # 自分自身に申請を送ろうとしている場合は弾く
-        if current_uid == to_uid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="自分自身にフレンド申請を送ることはできません。"
-            )
+    if not get_user_doc(to_uid):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
 
-        # 相手のユーザーが本当に存在するか一応チェック
-        target_user_doc = db.collection("users").document(to_uid).get()
-        if not target_user_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="指定されたユーザーが見つかりません。"
-            )
+    my_friend_ref = db.collection("users").document(current_uid).collection("friends").document(to_uid)
+    existing_doc = my_friend_ref.get()
+    if existing_doc.exists:
+        status_now = (existing_doc.to_dict() or {}).get("status")
+        if status_now == "accepted":
+            return {"message": "already friends"}
+        if status_now in {"pending", "sent"}:
+            return {"message": "friend request already sent"}
 
-        # 自分の「friends」サブコレクションに、相手を「pending（保留中）」として保存
-        my_request_ref = db.collection("users").document(current_uid).collection("friends").document(to_uid)
-        
-        # すでにフレンド（accepted）や申請中（pending）でないか念のため確認
-        existing_doc = my_request_ref.get()
-        if existing_doc.exists:
-            status_now = existing_doc.to_dict().get("status")
-            if status_now == "accepted":
-                return {"message": "既にフレンドになっています。"}
-            elif status_now == "pending":
-                return {"message": "既にフレンド申請を送信済みです。"}
+    batch = db.batch()
+    batch.set(
+        my_friend_ref,
+        {"status": "pending", "direction": "sent", "createdAt": firestore.SERVER_TIMESTAMP},
+        merge=True,
+    )
+    batch.set(
+        db.collection("users").document(to_uid).collection("friendRequests").document(current_uid),
+        {"status": "pending", "fromUserId": current_uid, "createdAt": firestore.SERVER_TIMESTAMP},
+        merge=True,
+    )
+    batch.commit()
 
-        # 新規に pending ステータスでレコードを作成
-        my_request_ref.set({"status": "pending"})
+    return {"message": "friend request sent"}
 
-        return {"message": "フレンド申請を送信しました！相手の承認を待っています。"}
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"フレンド申請の送信に失敗しました: {str(e)}"
-        )
+@router.post("/approve", status_code=status.HTTP_200_OK)
+async def approve_friend_request(
+    request: FriendApproveRequest,
+    current_uid: str = Depends(get_current_user),
+):
+    friend_uid = request.friendUserId
+    if current_uid == friend_uid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot approve yourself")
+
+    request_ref = db.collection("users").document(current_uid).collection("friendRequests").document(friend_uid)
+    if not request_ref.get().exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="friend request not found")
+
+    batch = db.batch()
+    batch.set(
+        db.collection("users").document(current_uid).collection("friends").document(friend_uid),
+        {"status": "accepted", "createdAt": firestore.SERVER_TIMESTAMP},
+        merge=True,
+    )
+    batch.set(
+        db.collection("users").document(friend_uid).collection("friends").document(current_uid),
+        {"status": "accepted", "createdAt": firestore.SERVER_TIMESTAMP},
+        merge=True,
+    )
+    batch.delete(request_ref)
+    batch.commit()
+
+    return {"message": "friend request approved"}
+
+
+@router.post("/reject", status_code=status.HTTP_200_OK)
+async def reject_friend_request(
+    request: FriendRejectRequest,
+    current_uid: str = Depends(get_current_user),
+):
+    friend_uid = request.friendUserId
+    batch = db.batch()
+    batch.delete(db.collection("users").document(current_uid).collection("friendRequests").document(friend_uid))
+    batch.delete(db.collection("users").document(friend_uid).collection("friends").document(current_uid))
+    batch.commit()
+    return {"message": "friend request rejected"}

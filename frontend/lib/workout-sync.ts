@@ -67,6 +67,7 @@ export async function syncWorkoutData(options?: { showAlert?: boolean }) {
       }
       workoutData.setUserProfile({
         userId: profile.userId,
+        friendId: profile.friendId ?? workoutData.userProfile.friendId,
         name: profile.name ?? workoutData.userProfile.name,
         age: profile.age != null ? String(profile.age) : '',
         height: profile.height != null ? String(profile.height) : '',
@@ -142,6 +143,7 @@ export async function saveProfileToBackend(profile: {
 
   workoutData.setUserProfile({
     userId,
+    friendId: workoutData.userProfile.friendId,
     name: profile.name,
     age: profile.age ?? workoutData.userProfile.age,
     height: profile.height ?? workoutData.userProfile.height,
