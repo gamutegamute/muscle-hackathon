@@ -85,6 +85,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
     改ざんされていない本物の uid (User ID) を返します（ゲストは弾かれます）。
     """
     token = credentials.credentials
+
+    # 🌐 もしフロントからWebデモ用のダミーの鍵が来たら、Firebaseの検証をスルーして即通過！
+    if token == "dummy_token_for_demo":
+        return "guest-3owagbhn"
+    
     try:
         # Firebase Admin SDK が署名の検証、有効期限のチェックをすべて自動で行う
         decoded_token = firebase_auth.verify_id_token(token)
