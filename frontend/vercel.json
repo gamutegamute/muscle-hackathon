@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com/:path*"
+    }
+  ]
+}
