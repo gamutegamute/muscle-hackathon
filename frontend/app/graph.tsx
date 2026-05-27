@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -34,6 +35,7 @@ type GraphDay = {
 };
 
 export default function GraphScreen() {
+  const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [totalMinutes, setTotalMinutes] = useState(0);
@@ -153,6 +155,13 @@ export default function GraphScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.pageTitle, { color: theme }]}>トレーニング分析</Text>
+        <TouchableOpacity
+          style={[styles.backHomeButton, { borderColor: theme }]}
+          onPress={() => router.push('/(tabs)/home' as any)}
+        >
+          <Ionicons name="home-outline" size={18} color={theme} />
+          <Text style={[styles.backHomeButtonText, { color: theme }]}>ホームに戻る</Text>
+        </TouchableOpacity>
 
         {isLoggedOut ? (
           <View style={styles.emptyStateCard}>
@@ -284,6 +293,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { padding: 20, paddingBottom: 40 },
   pageTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+  backHomeButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: COLORS.white,
+    marginBottom: 16,
+  },
+  backHomeButtonText: { fontSize: 14, fontWeight: '600' },
   emptyStateCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,

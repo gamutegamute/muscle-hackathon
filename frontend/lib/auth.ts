@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
@@ -20,6 +21,10 @@ export async function loginWithEmail(email: string, password: string): Promise<U
 export async function loginWithGoogleIdToken(idToken: string): Promise<UserCredential> {
   const credential = GoogleAuthProvider.credential(idToken);
   return signInWithCredential(auth, credential);
+}
+
+export async function sendPasswordResetEmailToUser(email: string): Promise<void> {
+  return sendPasswordResetEmail(auth, email.trim());
 }
 
 export async function logoutFromFirebase() {

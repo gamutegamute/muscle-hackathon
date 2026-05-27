@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import AITrainerIcon from '@/components/AITrainerIcon';
 import { workoutData } from '../globalState';
 import { getAdvice } from '@/lib/api';
 import { getApiConnectionHelpMessage } from '@/lib/workout-sync';
@@ -249,9 +250,7 @@ export default function AiChatScreen() {
               style={[styles.bubbleWrapper, msg.sender === 'user' ? styles.userWrapper : styles.aiWrapper]}
             >
               {msg.sender === 'ai' && (
-                <View style={styles.aiAvatar}>
-                  <Text style={styles.aiAvatarText}>🤖</Text>
-                </View>
+                <AITrainerIcon size={36} style={styles.aiAvatar} />
               )}
               <View style={[styles.bubble, msg.sender === 'user' ? { backgroundColor: theme } : styles.aiBubble]}>
                 <Text
@@ -277,9 +276,7 @@ export default function AiChatScreen() {
 
           {isTyping && (
             <View style={[styles.bubbleWrapper, styles.aiWrapper]}>
-              <View style={styles.aiAvatar}>
-                <Text style={styles.aiAvatarText}>🤖</Text>
-              </View>
+              <AITrainerIcon size={36} style={styles.aiAvatar} />
               <View style={[styles.bubble, styles.aiBubble, { paddingVertical: 8, paddingHorizontal: 20 }]}>
                 <Text style={[styles.bubbleText, styles.aiBubbleText, { fontSize: 24, letterSpacing: 2 }]}>
                   ...
@@ -343,18 +340,9 @@ const styles = StyleSheet.create({
   aiWrapper: { alignSelf: 'flex-start' },
   userWrapper: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   aiAvatar: {
-    backgroundColor: COLORS.white,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
     zIndex: 1,
   },
-  aiAvatarText: { fontSize: 20 },
   bubble: { paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, position: 'relative' },
   aiBubble: { backgroundColor: COLORS.aiBubble, borderTopLeftRadius: 5 },
   bubbleText: { fontSize: 15, lineHeight: 22 },

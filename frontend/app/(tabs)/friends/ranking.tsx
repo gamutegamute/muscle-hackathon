@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useFriends } from '../../../hooks/useFriends';
@@ -88,6 +88,15 @@ export default function RankingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+              <Ionicons name="close" size={22} color={theme} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       <FlatList
         data={ranking}
         keyExtractor={(item) => item.id}
@@ -100,7 +109,7 @@ export default function RankingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  list: { padding: 15 },
+  list: { padding: 15, paddingTop: 8 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -118,4 +127,11 @@ const styles = StyleSheet.create({
   name: { fontSize: 16, fontWeight: 'bold', color: COLORS.text },
   selfLabel: { fontSize: 12, fontWeight: 'bold', marginTop: 3 },
   time: { fontSize: 14, color: COLORS.grayText, fontWeight: 'bold' },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

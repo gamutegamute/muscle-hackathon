@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, SafeAreaView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, StyleSheet, Image, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
@@ -9,6 +9,7 @@ const COLORS = { background: '#F5F5F5', white: '#FFFFFF', text: '#333333', grayT
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { getFriendById } = useFriends();
   const [theme, setTheme] = useState(workoutData.themeColor || '#A4C639');
 
@@ -79,6 +80,10 @@ export default function FriendDetailScreen() {
             <Text style={styles.emptyText}>最近の記録がありません</Text>
           )}
         </View>
+        <TouchableOpacity style={[styles.backButton, { borderColor: theme }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={18} color={theme} />
+          <Text style={[styles.backButtonText, { color: theme }]}>フレンド一覧に戻る</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -106,4 +111,15 @@ const styles = StyleSheet.create({
   activityDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
   activityText: { fontSize: 15, color: COLORS.text },
   emptyText: { color: COLORS.grayText, fontStyle: 'italic' },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+  },
+  backButtonText: { fontSize: 15, fontWeight: '600' },
 });

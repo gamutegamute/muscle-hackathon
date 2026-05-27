@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
@@ -7,6 +8,7 @@ import { workoutData } from '../../globalState';
 const COLORS = { background: '#F5F5F5', white: '#FFFFFF', text: '#333333', grayText: '#8E8E93', success: '#34C759', danger: '#FF3B30' };
 
 export default function RequestsScreen() {
+  const router = useRouter();
   const { requests: friendRequests, approveRequest, rejectRequest, isLoading } = useFriends();
   const [theme, setTheme] = useState(workoutData.themeColor || '#A4C639');
 
@@ -39,6 +41,15 @@ export default function RequestsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+              <Ionicons name="close" size={22} color={theme} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       {isLoading && <ActivityIndicator size="large" color={theme} style={{ marginTop: 20 }} />}
       {friendRequests.length === 0 ? (
         <View style={styles.emptyContainer}><Text style={styles.emptyText}>フレンド申請はありません</Text></View>
@@ -61,5 +72,12 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row' },
   actionBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: COLORS.grayText, fontSize: 16 }
+  emptyText: { color: COLORS.grayText, fontSize: 16 },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

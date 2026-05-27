@@ -4,6 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 import { workoutData } from '@/app/globalState';
 import { getProfile } from '@/lib/api';
 import { logoutFromFirebase } from '@/lib/auth';
@@ -81,6 +83,8 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
+  const isEmailValid = useMemo(() => EMAIL_REGEX.test(email.trim()), [email]);
 
   const hasGoogleClientConfig = useMemo(() => {
     if (Platform.OS === 'ios') {
@@ -161,6 +165,26 @@ export default function App() {
     }
   };
 
+  const handleSendPasswordReset = async () => {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      Alert.alert('入力エラー', 'メールアドレスを入力してください。');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { sendPasswordResetEmailToUser } = await import('@/lib/auth');
+      await sendPasswordResetEmailToUser(normalizedEmail);
+      Alert.alert('送信完了', 'パスワード再設定メールを送信しました。');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'パスワード再設定メールの送信に失敗しました。';
+      Alert.alert('送信エラー', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -199,6 +223,11 @@ export default function App() {
               onChangeText={setPassword}
               secureTextEntry
             />
+            {mode === 'login' && isEmailValid && (
+              <TouchableOpacity style={styles.forgotPasswordButton} onPress={() => void handleSendPasswordReset()}>
+                <Text style={styles.forgotPasswordText}>パスワードを忘れた場合</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity
@@ -327,6 +356,15 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     fontSize: 16,
     color: '#333333',
+  },
+  forgotPasswordButton: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
+  },
+  forgotPasswordText: {
+    color: '#007aff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   primaryButton: {
     width: 350,

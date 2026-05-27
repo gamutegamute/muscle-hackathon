@@ -20,7 +20,7 @@ export default function FriendsLayout() {
       <Stack.Screen name="[id]" options={{ title: 'フレンド詳細', headerShadowVisible: false }} />
       <Stack.Screen name="search" options={{ title: 'フレンド検索', presentation: 'modal' }} />
       <Stack.Screen name="requests" options={{ title: 'フレンド申請', presentation: 'modal' }} />
-      <Stack.Screen name="ranking" options={{ title: 'ランキング', headerShadowVisible: false }} />
+      <Stack.Screen name="ranking" options={{ title: 'ランキング', presentation: 'modal', headerShadowVisible: false }} />
     </Stack>
   );
 }
