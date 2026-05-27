@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { workoutData } from '@/app/globalState';
 import { removeAchievementProgress } from '@/lib/achievement-storage';
+import { deleteGuestProfile } from '@/lib/api';
 
 let currentGuestUserId: string | null = null;
 const GUEST_SESSION_KEY = 'guest_session';
@@ -61,6 +62,7 @@ export async function clearGuestSessionData() {
   const userId = currentGuestUserId || (await getStoredGuestUserId());
 
   if (userId) {
+    await deleteGuestProfile(userId);
     await removeAchievementProgress(userId);
   }
 

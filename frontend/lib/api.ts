@@ -119,6 +119,12 @@ export async function updateProfile(userId: string, profile: Partial<ApiProfile>
   });
 }
 
+export async function deleteGuestProfile(userId: string) {
+  return request<{ message: string; userId: string; deletedRecords: number }>(`/profile/guest/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function upsertProfile(profile: ApiProfile) {
   try {
     await getProfile(profile.userId);
