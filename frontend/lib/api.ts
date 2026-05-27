@@ -95,7 +95,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     'Content-Type': 'application/json',
   };
 
-  const idToken = await auth.currentUser?.getIdToken();
+  let idToken = await auth.currentUser?.getIdToken();
+
+  // 🌐 もしWebブラウザ（PCやスマホのブラウザ）で動かしているなら、ダミーの鍵をセットする！
+  if (Platform.OS === 'web') {
+    idToken = 'dummy_token_for_demo';
+  }
+
   if (idToken) {
     headers.Authorization = `Bearer ${idToken}`;
   }
