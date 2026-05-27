@@ -41,6 +41,16 @@ export default function GraphScreen() {
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [streakDays, setStreakDays] = useState(0);
   const [todayStr, setTodayStr] = useState('');
+  const [recordVersion, setRecordVersion] = useState(0);
+
+  const refreshFromWorkoutState = useCallback(() => {
+    const isLoggedOut = workoutData.sessionMode === 'logged_out';
+    setTheme(workoutData.themeColor);
+    setTotalMinutes(workoutData.totalMinutes || 0);
+    setStreakDays(workoutData.streakDays || 0);
+    setTodayStr(getLocalDate(new Date()));
+    setRecordVersion(isLoggedOut ? 0 : workoutData.records.length);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = workoutData.subscribeColor((color: string) => {
@@ -49,9 +59,23 @@ export default function GraphScreen() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = workoutData.subscribeData(() => {
+      refreshFromWorkoutState();
+    });
+
+    return () => unsubscribe();
+  }, [refreshFromWorkoutState]);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      refreshFromWorkoutState();
+      if (workoutData.sessionMode === 'logged_out') {
+        return () => {
+          active = false;
+        };
+      }
 
       syncWorkoutData()
         .catch(() => {
@@ -59,16 +83,13 @@ export default function GraphScreen() {
         })
         .finally(() => {
           if (!active) return;
-          setTheme(workoutData.themeColor);
-          setTotalMinutes(workoutData.totalMinutes || 0);
-          setStreakDays(workoutData.streakDays || 0);
-          setTodayStr(getLocalDate(new Date()));
+          refreshFromWorkoutState();
         });
 
       return () => {
         active = false;
       };
-    }, []),
+    }, [refreshFromWorkoutState]),
   );
 
   useEffect(() => {
@@ -83,6 +104,10 @@ export default function GraphScreen() {
   workoutData.records.forEach((record: WorkoutRecord) => {
     recordMap[record.date] = (recordMap[record.date] || 0) + (record.minutes || 0);
   });
+
+  void recordVersion;
+  const isLoggedOut = workoutData.sessionMode === 'logged_out';
+  const hasRecords = workoutData.records.length > 0;
 
   const days: GraphDay[] = [];
   const today = new Date();
@@ -130,6 +155,18 @@ export default function GraphScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.pageTitle, { color: theme }]}>トレーニング分析</Text>
+
+        {isLoggedOut ? (
+          <View style={styles.emptyStateCard}>
+            <Text style={styles.emptyStateTitle}>ログアウト中のためグラフデータはありません</Text>
+            <Text style={styles.emptyStateText}>ログインすると記録に応じたグラフが表示されます。</Text>
+          </View>
+        ) : !hasRecords ? (
+          <View style={styles.emptyStateCard}>
+            <Text style={styles.emptyStateTitle}>まだ記録データがありません</Text>
+            <Text style={styles.emptyStateText}>トレーニングを記録するとここにグラフが表示されます。</Text>
+          </View>
+        ) : null}
 
         <View style={styles.summaryRow}>
           <View style={styles.statCard}>
@@ -278,6 +315,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { padding: 20, paddingBottom: 40 },
   pageTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+  emptyStateCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  emptyStateTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.text, marginBottom: 6 },
+  emptyStateText: { fontSize: 13, color: COLORS.grayText, lineHeight: 18 },
   summaryRow: { marginBottom: 20 },
   statCard: {
     backgroundColor: COLORS.white,

@@ -9,7 +9,7 @@ import 'react-native-reanimated';
 import { workoutData } from '@/app/globalState';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { auth } from '@/lib/firebase-client';
-import { ensureGuestUserId } from '@/lib/guest-session';
+import { clearGuestSessionMarker, restoreGuestSession } from '@/lib/guest-session';
 import { syncWorkoutData } from '@/lib/workout-sync';
 
 LogBox.ignoreAllLogs(true);
@@ -26,12 +26,18 @@ export default function RootLayout() {
       const setupSession = async () => {
         try {
           if (user?.uid) {
+            await clearGuestSessionMarker();
+            workoutData.setSessionMode('registered');
             workoutData.setUserProfile({ userId: user.uid });
+            await syncWorkoutData();
           } else {
-            await ensureGuestUserId();
+            const guestUserId = await restoreGuestSession();
+            if (guestUserId) {
+              await syncWorkoutData();
+            } else {
+              workoutData.resetData({ sessionMode: 'logged_out' });
+            }
           }
-
-          await syncWorkoutData();
         } catch {
           // Silently ignore startup sync failures.
         }

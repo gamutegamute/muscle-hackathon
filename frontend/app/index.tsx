@@ -6,7 +6,7 @@ import { Alert, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, Tex
 
 import { workoutData } from '@/app/globalState';
 import { getProfile } from '@/lib/api';
-import { ensureGuestUserId } from '@/lib/guest-session';
+import { clearGuestSessionMarker, ensureGuestUserId } from '@/lib/guest-session';
 import { syncWorkoutData } from '@/lib/workout-sync';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -95,6 +95,8 @@ export default function App() {
 
   const completeLogin = useCallback(
     async (userId: string, idToken?: string) => {
+      await clearGuestSessionMarker();
+      workoutData.setSessionMode('registered');
       workoutData.setUserProfile({ userId });
 
       if (idToken) {

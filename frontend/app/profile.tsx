@@ -37,6 +37,7 @@ type Message = {
 export default function ProfileSettingsScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
+  const textInputRef = useRef<TextInput>(null);
   
   const [name, setName] = useState(workoutData.userProfile.name || '');
   const [age, setAge] = useState(workoutData.userProfile.age || '');
@@ -64,6 +65,11 @@ export default function ProfileSettingsScreen() {
     }, 100);
   };
 
+  const clearInput = () => {
+    setInputText('');
+    textInputRef.current?.clear();
+  };
+
   const addAiMessage = (text: string) => {
     setIsTyping(true);
     setTimeout(() => {
@@ -78,7 +84,7 @@ export default function ProfileSettingsScreen() {
 
     const userText = inputText.trim();
     setMessages((prev) => [...prev, { id: Date.now(), sender: 'user', text: userText }]);
-    setInputText('');
+    clearInput();
     scrollToBottom();
 
     if (step === 0) {
@@ -250,6 +256,7 @@ export default function ProfileSettingsScreen() {
 
         <View style={styles.inputContainer}>
           <TextInput
+            ref={textInputRef}
             style={styles.textInput}
             placeholder={step === 0 ? "名前を入力" : "数値を入力"}
             placeholderTextColor={COLORS.grayText}

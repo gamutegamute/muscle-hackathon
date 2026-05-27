@@ -33,13 +33,38 @@ export default function HomeScreen() {
   const [streakDays, setStreakDays] = useState(workoutData.streakDays);
   const [totalMinutes, setTotalMinutes] = useState(workoutData.totalMinutes);
   const [markedDates, setMarkedDates] = useState(workoutData.markedDates);
-  const [currentBadge, setCurrentBadge] = useState(workoutData.equippedBadge);
+  const [currentBadge, setCurrentBadge] = useState(workoutData.sessionMode === 'logged_out' ? '' : workoutData.equippedBadge);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [isHoursFormat, setIsHoursFormat] = useState(false);
   const [todayRecords, setTodayRecords] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const refreshFromWorkoutState = useCallback(() => {
+    const isLoggedOut = workoutData.sessionMode === 'logged_out';
+    setStreakDays(workoutData.streakDays || 0);
+    setTotalMinutes(workoutData.totalMinutes || 0);
+    setMarkedDates({ ...workoutData.markedDates });
+    setCurrentBadge(isLoggedOut ? '' : workoutData.equippedBadge);
+    setTheme(workoutData.themeColor);
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+
+    setTodayRecords(isLoggedOut ? [] : workoutData.records.filter((r) => r.date === todayStr));
+  }, []);
+
+  React.useEffect(() => {
+    const unsubscribe = workoutData.subscribeData(() => {
+      refreshFromWorkoutState();
+    });
+
+    return () => unsubscribe();
+  }, [refreshFromWorkoutState]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -63,45 +88,35 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      refreshFromWorkoutState();
+      if (workoutData.sessionMode === 'logged_out') {
+        return () => {
+          active = false;
+        };
+      }
       syncWorkoutData().catch(() => {
         // オフライン時はローカル状態をそのまま表示
       }).finally(() => {
         if (!active) return;
-        setStreakDays(workoutData.streakDays);
-        setTotalMinutes(workoutData.totalMinutes);
-        setMarkedDates({ ...workoutData.markedDates });
-        setCurrentBadge(workoutData.equippedBadge);
-        setTheme(workoutData.themeColor);
-
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
-        const todayStr = `${y}-${m}-${d}`;
-
-        const filtered = workoutData.records.filter((r) => r.date === todayStr);
-        setTodayRecords([...filtered]);
+        refreshFromWorkoutState();
       });
 
       return () => {
         active = false;
       };
-    }, [])
+    }, [refreshFromWorkoutState])
   );
 
   const handleRefresh = async () => {
+    if (workoutData.sessionMode === 'logged_out') {
+      refreshFromWorkoutState();
+      return;
+    }
+
     try {
       setIsRefreshing(true);
       await syncWorkoutData({ showAlert: true });
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      const todayStr = `${y}-${m}-${d}`;
-      setTodayRecords(workoutData.records.filter((r) => r.date === todayStr));
-      setStreakDays(workoutData.streakDays);
-      setTotalMinutes(workoutData.totalMinutes);
-      setMarkedDates({ ...workoutData.markedDates });
+      refreshFromWorkoutState();
     } catch {
       Alert.alert('更新エラー', '最新データの取得に失敗しました。');
     } finally {
@@ -133,6 +148,7 @@ export default function HomeScreen() {
   };
 
   const timeDisplay = formatTotalTime(totalMinutes);
+  const isLoggedOut = workoutData.sessionMode === 'logged_out';
 
   const getMarkedDates = () => {
     const marks: any = {};
@@ -159,11 +175,17 @@ export default function HomeScreen() {
         >
           <View style={styles.aiHeader}>
             <Text style={[styles.aiName, { color: theme }]}>🤖 AIトレーナー</Text>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{currentBadge}</Text>
-            </View>
+            {currentBadge ? (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>{currentBadge}</Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.aiMessage}>{getAiMessage(streakDays)}</Text>
+          <Text style={styles.aiMessage}>
+            {isLoggedOut
+              ? 'ログインするとトレーニング状況やAIメッセージが表示されます。'
+              : getAiMessage(streakDays)}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.summaryContainer}>
@@ -189,8 +211,8 @@ export default function HomeScreen() {
 
         <View style={styles.calendarContainer}>
           <Calendar
-            key={`${Object.keys(markedDates).length}-${theme}`}
-            markedDates={getMarkedDates()}
+            key={`${Object.keys(markedDates).length}-${theme}-${isLoggedOut ? 'logged-out' : 'active'}`}
+            markedDates={isLoggedOut ? {} : getMarkedDates()}
             onDayPress={() => {}}
             enableSwipeMonths={false}
             theme={{
@@ -265,6 +287,13 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {isLoggedOut ? (
+          <View style={styles.emptyOverviewCard}>
+            <Text style={styles.emptyText}>ログアウト中のため表示データはありません</Text>
+            <Text style={styles.emptySubText}>ログインするとホームの記録やバッジが表示されます。</Text>
+          </View>
+        ) : null}
+
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Pressable 
             style={[styles.graphButton, { backgroundColor: theme }]} 
@@ -311,6 +340,7 @@ const styles = StyleSheet.create({
   memoContainer: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: COLORS.white, padding: 8, borderRadius: 8, marginTop: 4 },
   recordMemo: { fontSize: 13, color: COLORS.grayText, flex: 1, lineHeight: 18 },
   emptyContainer: { paddingVertical: 20, alignItems: 'center' },
+  emptyOverviewCard: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'center', elevation: 2 },
   emptyText: { color: COLORS.grayText, fontSize: 14, fontWeight: 'bold' },
   emptySubText: { color: COLORS.grayText, fontSize: 12, marginTop: 4 },
   graphButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderRadius: 15, elevation: 3, marginBottom: 20 },

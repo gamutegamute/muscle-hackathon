@@ -51,3 +51,15 @@ export async function saveAchievementProgress(userId: string, progress: Achievem
     // Ignore storage failures and keep the app usable.
   }
 }
+
+export async function removeAchievementProgress(userId: string) {
+  if (!userId) {
+    return;
+  }
+
+  try {
+    await AsyncStorage.removeItem(getStorageKey(userId));
+  } catch {
+    // Ignore storage failures and keep the app usable.
+  }
+}

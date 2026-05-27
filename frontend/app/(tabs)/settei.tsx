@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
+  Alert,
   AppState,
   FlatList,
   Linking,
@@ -20,6 +21,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 
 import { workoutData } from '../globalState';
+import { logoutFromFirebase } from '@/lib/auth';
+import { clearGuestSessionData, clearGuestSessionMarker } from '@/lib/guest-session';
 import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
 
 const COLORS = {
@@ -313,9 +316,20 @@ export default function ProfileScreen() {
     void persistProfileState(undefined, { syncAfterSave: false, themeColor: nextTheme.color });
   };
 
-  const handleLogout = () => {
-    workoutData.resetData();
-    router.replace('/');
+  const handleLogout = async () => {
+    try {
+      if (workoutData.isGuestUser()) {
+        await clearGuestSessionData();
+      } else {
+        await clearGuestSessionMarker();
+        await logoutFromFirebase();
+      }
+
+      workoutData.resetData({ sessionMode: 'logged_out' });
+      router.replace('/');
+    } catch {
+      Alert.alert('ログアウトエラー', 'ログアウトに失敗しました。もう一度お試しください。');
+    }
   };
 
   const toggleVibe = (value: boolean) => {

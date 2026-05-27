@@ -43,6 +43,8 @@ type AchievementDefinition = {
   }) => boolean;
 };
 
+export type SessionMode = 'logged_out' | 'guest' | 'registered';
+
 const DEFAULT_USER_ID = 'guest-user';
 const DEFAULT_BADGE = '🥚 はじまりの一歩';
 
@@ -93,6 +95,7 @@ export const workoutData = {
   equippedBadge: DEFAULT_BADGE,
   themeColor: '#A4C639',
   isVibrationEnabled: true,
+  sessionMode: 'logged_out' as SessionMode,
 
   userProfile: {
     userId: DEFAULT_USER_ID,
@@ -105,22 +108,39 @@ export const workoutData = {
   } as UserProfile,
 
   colorListeners: [] as ((color: string) => void)[],
+  dataListeners: [] as (() => void)[],
 
   getUserId() {
     return this.userProfile.userId || DEFAULT_USER_ID;
   },
 
+  isGuestUser() {
+    return this.sessionMode === 'guest';
+  },
+
+  setSessionMode(mode: SessionMode) {
+    this.sessionMode = mode;
+  },
+
   setUserProfile(profileData: Partial<UserProfile>) {
     const nextUserId = profileData.userId;
     if (nextUserId && nextUserId !== this.userProfile.userId) {
+      this.totalMinutes = 0;
+      this.todayTotalMinutes = 0;
+      this.todayRecords = 0;
+      this.streakDays = 0;
       this.unlockedAchievements = [];
       this.latestAchievementId = null;
       this.maxStreakDays = 0;
       this.aiConsultationCount = 0;
       this.achievementProgressLoadedForUserId = null;
+      this.records = [];
+      this.markedDates = {};
+      this.equippedBadge = '';
     }
 
     this.userProfile = { ...this.userProfile, ...profileData };
+    this.dataListeners.forEach((listener) => listener());
     console.log('プロフィール更新:', this.userProfile);
   },
 
@@ -151,6 +171,7 @@ export const workoutData = {
     });
     this.markedDates = newMarkedDates;
     this.maxStreakDays = calculateMaxStreakDays(this.records.map((record) => record.date));
+    this.dataListeners.forEach((listener) => listener());
   },
 
   applySummary(summary: WorkoutSummary) {
@@ -159,6 +180,7 @@ export const workoutData = {
     this.todayRecords = summary.todayRecords ?? this.todayRecords;
     this.streakDays = summary.streakDays ?? this.streakDays;
     this.checkAchievements();
+    this.dataListeners.forEach((listener) => listener());
   },
 
   replaceAll(data: {
@@ -177,8 +199,8 @@ export const workoutData = {
     }
   },
 
-  resetData() {
-    const currentUserId = this.getUserId();
+  resetData(options?: { userId?: string; sessionMode?: SessionMode }) {
+    const nextUserId = options?.userId ?? '';
     this.totalMinutes = 0;
     this.todayTotalMinutes = 0;
     this.todayRecords = 0;
@@ -190,11 +212,12 @@ export const workoutData = {
     this.latestAchievementId = null;
     this.achievementProgressLoadedForUserId = null;
     this.records = [];
-    this.equippedBadge = DEFAULT_BADGE;
+    this.equippedBadge = '';
     this.themeColor = '#A4C639';
     this.isVibrationEnabled = true;
+    this.sessionMode = options?.sessionMode ?? 'logged_out';
     this.userProfile = {
-      userId: currentUserId,
+      userId: nextUserId,
       name: 'ゲスト',
       age: '',
       height: '',
@@ -203,6 +226,7 @@ export const workoutData = {
       avatar: null,
     };
     this.colorListeners.forEach((listener) => listener(this.themeColor));
+    this.dataListeners.forEach((listener) => listener());
     console.log('記録データをリセットしました');
   },
 
@@ -219,6 +243,7 @@ export const workoutData = {
     });
     this.markedDates = newMarkedDates;
     this.colorListeners.forEach((listener) => listener(color));
+    this.dataListeners.forEach((listener) => listener());
     console.log('テーマカラー更新:', color);
   },
 
@@ -226,6 +251,13 @@ export const workoutData = {
     this.colorListeners.push(listener);
     return () => {
       this.colorListeners = this.colorListeners.filter((l) => l !== listener);
+    };
+  },
+
+  subscribeData(listener: () => void) {
+    this.dataListeners.push(listener);
+    return () => {
+      this.dataListeners = this.dataListeners.filter((l) => l !== listener);
     };
   },
 
@@ -304,6 +336,7 @@ export const workoutData = {
     this.streakDays = this.markedDates[yStr] ? Math.max(this.streakDays, 1) + 1 : Math.max(this.streakDays, 1);
     this.maxStreakDays = Math.max(this.maxStreakDays, this.streakDays);
     this.checkAchievements();
+    this.dataListeners.forEach((listener) => listener());
   },
 
   ACHIEVEMENTS: [
