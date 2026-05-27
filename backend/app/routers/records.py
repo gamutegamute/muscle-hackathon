@@ -1,16 +1,9 @@
 from datetime import datetime
-from firebase_admin import firestore
 
 from fastapi import APIRouter, Depends, HTTPException
+from firebase_admin import firestore
 
-# 🔑 新しく作った get_current_user をインポートに追加
-from app.auth import (
-    CurrentUser, 
-    assert_record_owner, 
-    get_current_user_optional, 
-    get_current_user,  # 👈 追加
-    resolve_user_id
-)
+from app.auth import CurrentUser, assert_record_owner, get_current_user_optional, resolve_user_id
 from app.firebase import db
 from app.schemas.record import RecordCreate
 from app.schemas.record_update import RecordUpdate
@@ -27,8 +20,6 @@ def save_record(data: dict):
 
 
 def get_user_records(user_id: str):
-    # 🔒 将来的にすべてのデータを users/{uid}/records のサブコレクションに移行する場合はここを修正します
-    # 現状は移行期として既存の records コレクションから where で引く形を維持しています
     docs = db.collection("records").where("userId", "==", user_id).stream()
     return [doc.to_dict() for doc in docs]
 
@@ -56,23 +47,13 @@ def update_user_last_activity(user_id: str):
     )
 
 
-# =====================================================================
-# 🛠️ 1. 記録作成API (POST): ログイン必須・ガチ認証化
-# =====================================================================
 @router.post("")
-def create_record(
-    record: RecordCreate, 
-    # 🔑 get_current_user_optional から get_current_user (本物) に変更
-    # これにより、トークンが無い or ゲスト の場合は自動的に401エラーで弾かれます！
-    current_uid: str = Depends(get_current_user) 
-):
+def create_record(record: RecordCreate, current_user: CurrentUser = Depends(get_current_user_optional)):
     data = record.model_dump()
-    
-    # 🔒 ボディに入っている data["userId"] は一切無視して、認証された current_uid を強制使用！
-    user_id = current_uid 
+    user_id = resolve_user_id(data["userId"], current_user)
 
     record_data = {
-        "userId": user_id,  # ⭕️ 100%安全な本人のID
+        "userId": user_id,
         "menuName": data["menuName"],
         "count": data["count"],
         "duration": data.get("duration"),
@@ -87,11 +68,6 @@ def create_record(
     update_user_last_activity(user_id)
     return {"message": "record saved", "data": format_record(saved_data)}
 
-
-# =====================================================================
-# 🔄 2. 既存の取得・更新API (GET/PATCH/DELETE): 
-# 既存画面が壊れないよう、現在の get_current_user_optional の仕組みを一旦維持
-# =====================================================================
 
 @router.get("/summary/{user_id}")
 def get_records_summary(user_id: str, current_user: CurrentUser = Depends(get_current_user_optional)):
@@ -126,7 +102,11 @@ def get_records(user_id: str, current_user: CurrentUser = Depends(get_current_us
 
 
 @router.patch("/{record_id}")
-def update_record_by_id(record_id: str, record: RecordUpdate, current_user: CurrentUser = Depends(get_current_user_optional)):
+def update_record_by_id(
+    record_id: str,
+    record: RecordUpdate,
+    current_user: CurrentUser = Depends(get_current_user_optional),
+):
     existing_record = get_record_by_id(record_id)
 
     if not existing_record:
