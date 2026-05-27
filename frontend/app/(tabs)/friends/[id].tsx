@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
+import { canRenderAvatarUri } from '../../../lib/avatar';
 
 const COLORS = { background: '#F5F5F5', white: '#FFFFFF', text: '#333333', grayText: '#8E8E93', accent: '#FFD700' };
 
@@ -32,7 +33,7 @@ export default function FriendDetailScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileHeader}>
-          {friend.avatar ? (
+          {canRenderAvatarUri(friend.avatar) ? (
             <Image source={{ uri: friend.avatar }} style={styles.avatarImage} />
           ) : (
             <View style={[styles.avatarCircle, { backgroundColor: theme }]}><Ionicons name="person" size={50} color={COLORS.white} /></View>

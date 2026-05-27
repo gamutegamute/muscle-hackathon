@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
+import { canRenderAvatarUri } from '../../../lib/avatar';
 
 const COLORS = {
   background: '#F5F5F5',
@@ -69,7 +70,7 @@ export default function RankingScreen() {
       <View style={styles.rankContainer}>
         <Text style={[styles.rankNumber, { color: getRankColor(index) }]}>{index + 1}</Text>
       </View>
-      {item.avatar ? (
+      {canRenderAvatarUri(item.avatar) ? (
         <Image source={{ uri: item.avatar }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatarPlaceholder, { backgroundColor: theme }]}>

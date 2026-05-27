@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
+import { canRenderAvatarUri } from '../../../lib/avatar';
 
 const COLORS = { background: '#F5F5F5', white: '#FFFFFF', text: '#333333', grayText: '#8E8E93' };
 
@@ -12,7 +13,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
-  const [userId, setUserId] = useState(workoutData.getUserId());
+  const [myFriendId, setMyFriendId] = useState(workoutData.userProfile.friendId ?? '');
   const [isRegistered, setIsRegistered] = useState(workoutData.sessionMode === 'registered');
   const [copyFeedback, setCopyFeedback] = useState('');
   const { searchUsers, sendRequest, sentRequests, isLoading, friends } = useFriends();
@@ -21,7 +22,7 @@ export default function SearchScreen() {
   useEffect(() => {
     const unsubscribe = workoutData.subscribeColor(setTheme);
     const unsubscribeData = workoutData.subscribeData(() => {
-      setUserId(workoutData.getUserId());
+      setMyFriendId(workoutData.userProfile.friendId ?? '');
       setIsRegistered(workoutData.sessionMode === 'registered');
     });
 
@@ -34,7 +35,7 @@ export default function SearchScreen() {
   const handleShareId = async () => {
     try {
       await Share.share({
-        message: `muscloopで一緒に筋トレしよう！私のフレンドIDは【${userId}】です！`,
+        message: `muscloopで一緒に筋トレしよう！私のフレンドIDは【${myFriendId}】です！`,
         title: 'フレンドIDを共有',
       });
     } catch (error) {
@@ -45,7 +46,7 @@ export default function SearchScreen() {
 
   const handleCopyId = async () => {
     try {
-      await Clipboard.setStringAsync(userId);
+      await Clipboard.setStringAsync(myFriendId);
       if (Platform.OS === 'android') {
         ToastAndroid.show('IDをコピーしました', ToastAndroid.SHORT);
       }
@@ -67,7 +68,7 @@ export default function SearchScreen() {
 
     return (
       <View style={styles.card}>
-        {item.avatar ? (
+        {canRenderAvatarUri(item.avatar) ? (
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatarPlaceholder, { backgroundColor: theme }]}><Ionicons name="person" size={24} color="#FFF"/></View>
@@ -104,7 +105,7 @@ export default function SearchScreen() {
         <View style={styles.profileShareRow}>
           <View style={styles.profileIdBox}>
             <Text style={styles.profileIdLabel}>マイID</Text>
-            <Text style={styles.profileIdText}>{userId}</Text>
+            <Text style={styles.profileIdText}>{myFriendId || 'ID取得中'}</Text>
           </View>
           <View style={styles.actionButtons}>
             <TouchableOpacity style={[styles.copyButton, { borderColor: theme }]} onPress={handleCopyId}>

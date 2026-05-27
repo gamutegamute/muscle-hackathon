@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
+import { canRenderAvatarUri } from '../../../lib/avatar';
 
 const COLORS = { background: '#F5F5F5', white: '#FFFFFF', text: '#333333', grayText: '#8E8E93', success: '#34C759', danger: '#FF3B30' };
 
@@ -19,7 +20,7 @@ export default function RequestsScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      {item.avatar ? (
+      {canRenderAvatarUri(item.avatar) ? (
         <Image source={{ uri: item.avatar }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatarPlaceholder, { backgroundColor: theme }]}><Ionicons name="person" size={24} color="#FFF"/></View>
