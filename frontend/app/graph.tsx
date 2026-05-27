@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -35,7 +34,6 @@ type GraphDay = {
 };
 
 export default function GraphScreen() {
-  const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [totalMinutes, setTotalMinutes] = useState(0);
@@ -257,35 +255,6 @@ export default function GraphScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.historyCard}
-          activeOpacity={0.8}
-          onPress={() => router.push('/records_history')}
-        >
-          <View style={styles.infoHeader}>
-            <Ionicons name="list-outline" size={24} color={theme} />
-            <Text style={[styles.infoTitle, { color: theme }]}>記録一覧</Text>
-          </View>
-          <View style={styles.historyLinkRow}>
-            <Text style={styles.historyLinkText}>過去の記録を一覧で見て、編集できます。</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme} />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.historyCard}
-          activeOpacity={0.8}
-          onPress={() => router.push('/achievements_history')}
-        >
-          <View style={styles.infoHeader}>
-            <Ionicons name="trophy-outline" size={24} color={theme} />
-            <Text style={[styles.infoTitle, { color: theme }]}>実績一覧</Text>
-          </View>
-          <View style={styles.historyLinkRow}>
-            <Text style={styles.historyLinkText}>取得済みの実績を確認できます。</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme} />
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -407,24 +376,5 @@ const styles = StyleSheet.create({
   },
   highlight: {
     fontWeight: 'bold',
-  },
-  historyCard: {
-    marginTop: 20,
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-  },
-  historyLinkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 12,
-  },
-  historyLinkText: {
-    flex: 1,
-    color: COLORS.grayText,
-    fontSize: 13,
-    lineHeight: 18,
   },
 });

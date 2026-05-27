@@ -306,6 +306,36 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
+        <TouchableOpacity
+          style={styles.historyCard}
+          activeOpacity={0.8}
+          onPress={() => router.push('/records_history')}
+        >
+          <View style={styles.historyHeader}>
+            <Ionicons name="list-outline" size={24} color={theme} />
+            <Text style={[styles.historyTitle, { color: theme }]}>記録一覧</Text>
+          </View>
+          <View style={styles.historyLinkRow}>
+            <Text style={styles.historyLinkText}>過去の記録を一覧で見て、編集できます。</Text>
+            <Ionicons name="chevron-forward" size={22} color={theme} />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.historyCard}
+          activeOpacity={0.8}
+          onPress={() => router.push('/achievements_history')}
+        >
+          <View style={styles.historyHeader}>
+            <Ionicons name="trophy-outline" size={24} color={theme} />
+            <Text style={[styles.historyTitle, { color: theme }]}>実績一覧</Text>
+          </View>
+          <View style={styles.historyLinkRow}>
+            <Text style={styles.historyLinkText}>取得済みの実績を確認できます。</Text>
+            <Ionicons name="chevron-forward" size={22} color={theme} />
+          </View>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -345,4 +375,9 @@ const styles = StyleSheet.create({
   emptySubText: { color: COLORS.grayText, fontSize: 12, marginTop: 4 },
   graphButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderRadius: 15, elevation: 3, marginBottom: 20 },
   graphButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
+  historyCard: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2 },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  historyTitle: { marginLeft: 8, fontSize: 16, fontWeight: 'bold' },
+  historyLinkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  historyLinkText: { flex: 1, color: COLORS.grayText, fontSize: 13, lineHeight: 18 },
 });
