@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { workoutData } from '@/app/globalState';
 import {
   type ApiFriend,
   approveFriendRequest,
@@ -73,8 +74,10 @@ export function useFriends() {
       setRequests(requestsResponse.map(toFriendRequest));
     } catch (error) {
       console.warn('Failed to load friends:', error);
-      setFriends([]);
-      setRequests([]);
+      if (workoutData.sessionMode !== 'registered') {
+        setFriends([]);
+        setRequests([]);
+      }
     } finally {
       setIsLoading(false);
     }

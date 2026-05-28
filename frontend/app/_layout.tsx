@@ -11,7 +11,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { auth } from '@/lib/firebase-client';
 import { clearGuestSessionMarker, restoreGuestSession } from '@/lib/guest-session';
 import { syncWorkoutData } from '@/lib/workout-sync';
-import { Platform } from 'react-native';
 
 LogBox.ignoreAllLogs(true);
 
@@ -25,15 +24,6 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       const setupSession = async () => {
-        // 🌐 もしWebブラウザ（PCやスマホのブラウザ）で動かしているなら、強制的にデモユーザーにする！
-          if (Platform.OS === 'web') {
-            await clearGuestSessionMarker();
-            workoutData.setSessionMode('registered'); // ゲストではなく登録済みモードとして動かす
-            workoutData.setUserProfile({ userId: 'guest-3owagbhn' }); // あなたの本物のテストID
-            await syncWorkoutData();
-            return; // Web版の処理はここで完全に終了して、下のスマホ用の処理は無視する
-          }
-
         try {
           if (user?.uid) {
             await clearGuestSessionMarker();
