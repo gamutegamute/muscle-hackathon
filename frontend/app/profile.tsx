@@ -55,6 +55,33 @@ const QUESTIONS: QuestionConfig[] = [
 
 const INITIAL_AI_MESSAGE = 'こんにちは。muscloopへようこそ。\nまずはあなたのことを少し教えてください。';
 
+function validateNumericProfile(profile: Pick<Record<FieldKey, string>, 'age' | 'height' | 'weight' | 'bodyFat'>) {
+  const rules = [
+    { key: 'age', label: '\u5e74\u9f62', min: 0, max: 130 },
+    { key: 'height', label: '\u8eab\u9577', min: 0, max: 300 },
+    { key: 'weight', label: '\u4f53\u91cd', min: 0, max: 500 },
+    { key: 'bodyFat', label: '\u4f53\u8102\u80aa\u7387', min: 0, max: 100 },
+  ] as const;
+
+  for (const rule of rules) {
+    const rawValue = profile[rule.key].trim();
+    if (!rawValue) {
+      continue;
+    }
+
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) {
+      return `${rule.label}\u306f\u6570\u5b57\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002`;
+    }
+
+    if (value < rule.min || value > rule.max) {
+      return `${rule.label}\u306f${rule.min}\u301c${rule.max}\u306e\u7bc4\u56f2\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002`;
+    }
+  }
+
+  return null;
+}
+
 function buildInitialMessages(): Message[] {
   return [
     { id: 1, sender: 'ai', text: INITIAL_AI_MESSAGE },
@@ -125,6 +152,13 @@ export default function ProfileSettingsScreen() {
       weight: (overrides?.weight ?? weight).trim(),
       bodyFat: (overrides?.bodyFat ?? bodyFat).trim(),
     };
+    const validationMessage = validateNumericProfile(profile);
+
+    if (validationMessage) {
+      addAiMessage(validationMessage, 100);
+      Alert.alert('\u5165\u529b\u30a8\u30e9\u30fc', validationMessage);
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -136,6 +170,7 @@ export default function ProfileSettingsScreen() {
         router.replace('/(tabs)/home');
       }, 800);
     } catch {
+      addAiMessage('\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u306e\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u5165\u529b\u5185\u5bb9\u3068\u901a\u4fe1\u72b6\u6cc1\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002', 100);
       Alert.alert(
         '保存エラー',
         'プロフィールの保存に失敗しました。バックエンド起動と API 接続先を確認してください。',
