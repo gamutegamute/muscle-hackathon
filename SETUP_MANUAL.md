@@ -1,48 +1,27 @@
-# muscle-hackathon セットアップ手順
+# muscloop セットアップ手順
 
-この手順で、別の PC でもフロントとバックエンドを起動して動作確認できます。
+本命の作業場所は `C:\dev\muscle-hackathon` です。OneDrive側の古いクローンと間違えないようにしてください。
 
-## 1. 事前に必要なもの
+## 1. 必要なもの
 
 - Git
-- Python 3.x
 - Node.js / npm
-- Firebase の `serviceAccountKey.json`
+- Python 3.x
+- Docker Desktop（BackendのDocker確認やAWS反映時）
+- Firebase service account key
+- Gemini API key
 
-確認コマンド:
-
-```powershell
-python --version
-node --version
-npm --version
-```
-
-## 2. リポジトリ取得
+## 2. Backend
 
 ```powershell
-git clone <リポジトリURL>
-cd muscle-hackathon
-```
-
-## 3. バックエンド起動
-
-```powershell
-cd backend
+cd C:\dev\muscle-hackathon\backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
 ```
 
-`backend/serviceAccountKey.json` を配置してください。
-`backend/.env` の `GEMINI_API_KEY` に Gemini API キーを設定してください。
-
-例:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-```
+`backend/.env` に `GEMINI_API_KEY` を設定します。ローカルでは `backend/serviceAccountKey.json` も配置してください。
 
 起動:
 
@@ -52,50 +31,64 @@ uvicorn app.main:app --reload
 
 確認:
 
-- [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-- [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
 
-## 4. フロント起動
+期待値:
 
-別ターミナルで:
+```json
+{
+  "status": "ok"
+}
+```
+
+## 3. Frontend
 
 ```powershell
-cd frontend
+cd C:\dev\muscle-hackathon\frontend
 copy .env.example .env
 npm install
-npm start
+npx expo start
 ```
 
-PC 上のエミュレータなら、`.env` の `EXPO_PUBLIC_API_BASE_URL` はそのままで大丈夫なことが多いです。
-
-実機確認なら、`127.0.0.1` ではなく自分の PC の IP に変えてください。
-
-例:
+ローカルBackendを見る場合:
 
 ```env
-EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:8000
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-## 5. 動作確認チェック
+実機からローカルBackendを見る場合は、`127.0.0.1` ではなくPCのLAN IPを使います。
 
-- `/health` が開く
-- プロフィール保存ができる
-- 記録保存ができる
-- ホームに累計時間と連続記録が出る
-- 今日の記録一覧が出る
-- 同じ日付・同じメニューの記録を保存し直したとき、二重加算されず上書きに近い動きになる
-- ホームの今日の記録をタップして編集画面に入れる
+```env
+EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000
+```
 
-## 6. よくある詰まりどころ
+AWS Backendを見る場合:
 
-- `serviceAccountKey.json` がない
-- フロントの `.env` が未設定
-- 実機から `127.0.0.1` を見にいっている
-- PowerShell の仮想環境有効化ができていない
+```env
+EXPO_PUBLIC_API_BASE_URL=http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com
+```
 
-## 7. Git に入れないもの
+## 4. Webビルド
 
-- `backend/serviceAccountKey.json`
+```powershell
+cd C:\dev\muscle-hackathon\frontend
+npx.cmd expo export --platform web
+```
+
+Vercelでは以下の設定です。
+
+- Root Directory: `frontend`
+- Build Command: `npx expo export --platform web`
+- Output Directory: `dist`
+- Install Command: `npm install`
+
+## 5. Gitに入れないもの
+
 - `.env`
-- `venv`, `.venv`
+- `backend/serviceAccountKey.json`
+- `venv`
+- `.venv`
 - `__pycache__`
+- ビルド成果物やキャッシュ
