@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
@@ -12,6 +12,16 @@ export default function FriendsScreen() {
   const router = useRouter();
   const { friends, requests } = useFriends();
   const [theme, setTheme] = useState(workoutData.themeColor || '#A4C639');
+  // 🌐 画面が表示される（タブが切り替わる）たびに最新のデータを同期する
+  useFocusEffect(
+    useCallback(() => {
+      // 本来はここに useFriends から提供される fetchFriends() などを呼び出したいですが、
+      // まずは一番大元の同期を叩いてデータ管理室（globalState）を最新にします
+      import('@/lib/workout-sync').then(({ syncWorkoutData }) => {
+        syncWorkoutData().catch((err) => console.warn('フレンド同期エラー:', err));
+      });
+    }, [])
+  );
 
   useEffect(() => {
     const unsubscribe = workoutData.subscribeColor(setTheme);
