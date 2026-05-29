@@ -80,7 +80,7 @@ export default function FriendsScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.segmentIcon, isActive ? { backgroundColor: '#FFFFFF' } : { backgroundColor: '#F2F4F7' }]}>
-                <Ionicons name={item.icon} size={18} color={isActive ? theme : COLORS.grayText} />
+               <Ionicons name={item.icon as any} size={18} color={isActive ? theme : COLORS.grayText} />
               </View>
               <Text style={[styles.segmentLabel, isActive ? styles.segmentLabelActive : null]}>{item.label}</Text>
               {item.key === 'requests' && requests.length > 0 ? (
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   segmentBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   listContent: { padding: 15 },
-  friendCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, padding: 15, borderRadius: 12, marginBottom: 10 },
+  friendCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', padding: 15, borderRadius: 12, marginBottom: 10 },
   avatar: { width: 50, height: 50, borderRadius: 25 },
   avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
   friendInfo: { flex: 1, marginLeft: 15 },

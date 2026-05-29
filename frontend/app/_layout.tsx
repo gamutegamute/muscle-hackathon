@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   webFrame: {
     maxWidth: 480,
     width: '100%',
-    minHeight: '100vh',
+   minHeight: '100%',
     alignSelf: 'center',
     overflow: 'hidden',
     borderWidth: 1,
