@@ -3,11 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 type AchievementProgress = {
   unlockedAchievements: string[];
   aiConsultationCount: number;
+  weeklyRankHistory: number[];
 };
 
 const DEFAULT_PROGRESS: AchievementProgress = {
   unlockedAchievements: [],
   aiConsultationCount: 0,
+  weeklyRankHistory: [],
 };
 
 function getStorageKey(userId: string) {
@@ -34,6 +36,9 @@ export async function loadAchievementProgress(userId: string): Promise<Achieveme
         typeof parsed.aiConsultationCount === 'number' && Number.isFinite(parsed.aiConsultationCount)
           ? parsed.aiConsultationCount
           : 0,
+      weeklyRankHistory: Array.isArray(parsed.weeklyRankHistory)
+        ? parsed.weeklyRankHistory.filter((value): value is number => typeof value === 'number')
+        : [],
     };
   } catch {
     return DEFAULT_PROGRESS;

@@ -45,6 +45,7 @@ export default function RankingScreen() {
         rank: workoutData.equippedBadge,
         consecutiveDays: workoutData.streakDays,
         totalTime: workoutData.totalMinutes,
+        weeklyTotalTime: (workoutData as any).weeklyTotalMinutes ?? workoutData.totalMinutes,
         achievementCount: workoutData.unlockedAchievements.length,
         recentActivity: [],
         isSelf: true,
@@ -82,21 +83,21 @@ export default function RankingScreen() {
           <Text style={styles.name}>{item.name}</Text>
           {item.isSelf && <Text style={[styles.selfLabel, { color: theme }]}>あなた</Text>}
         </View>
-        <Text style={styles.time}>{Math.floor(item.totalTime)}分</Text>
+        <Text style={styles.time}>{Math.floor(item.weeklyTotalTime ?? item.totalTime)}分</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-              <Ionicons name="close" size={22} color={theme} />
+      <Stack.Screen 
+        options={{ 
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+              <Ionicons name="arrow-back" size={24} color={theme} />
             </TouchableOpacity>
-          ),
-        }}
+          )
+        }} 
       />
       <FlatList
         data={ranking}

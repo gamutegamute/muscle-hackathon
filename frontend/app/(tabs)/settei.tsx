@@ -20,6 +20,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import * as Clipboard from 'expo-clipboard';
+import ColorPicker, { Panel1, Swatches, Preview, HueSlider } from 'reanimated-color-picker';
 
 import { workoutData } from '../globalState';
 import { logoutFromFirebase } from '@/lib/auth';
@@ -35,13 +36,7 @@ const COLORS = {
   accent: '#FFD700',
 };
 
-const THEME_OPTIONS = [
-  { name: 'Android', color: '#A4C639' },
-  { name: 'Ocean', color: '#2196F3' },
-  { name: 'Fire', color: '#FF5252' },
-  { name: 'Grape', color: '#9C27B0' },
-  { name: 'Midnight', color: '#37474F' },
-];
+
 
 interface StatusItemProps {
   label: string;
@@ -95,12 +90,15 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [showAchievementsModal, setShowAchievementsModal] = useState(false);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [vibeEnabled, setVibeEnabled] = useState(workoutData.isVibrationEnabled);
   const [notificationPermissionRaw, setNotificationPermissionRaw] = useState<Notifications.PermissionStatus | 'undetermined'>('undetermined');
   const [isCheckingNotificationPermission, setIsCheckingNotificationPermission] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
+  const [showColorPickerModal, setShowColorPickerModal] = useState(false);
+  const [tempColor, setTempColor] = useState(workoutData.themeColor);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
   const isPersistingNameRef = useRef(false);
@@ -152,6 +150,24 @@ export default function ProfileScreen() {
       desc: 'タイマーの切り替えに合わせて、トレーニングと休憩を分かりやすくサポートします。',
     },
   ];
+
+  const achievementItems = [
+    { id: 'default_0', icon: '🥚', name: 'はじまりの一歩', detail: 'アプリを始めた最初の実績です。', conditionText: '条件: アプリを使い始める' },
+    { id: 'streak_3', icon: '🔥', name: '3日連続の挑戦者', detail: '3日連続でトレーニングを続けた証です。', conditionText: '条件: 3日連続で記録する' },
+    { id: 'streak_7', icon: '🏅', name: '継続のルーキー', detail: '1週間しっかり積み上げたときに取れる実績です。', conditionText: '条件: 7日連続で記録する' },
+    { id: 'streak_14', icon: '💪', name: '2週間の努力家', detail: '2週間続けられたときに解放される実績です。', conditionText: '条件: 14日連続で記録する' },
+    { id: 'streak_30', icon: '👑', name: '筋肉の王者', detail: '1か月継続した人だけが取れる実績です。', conditionText: '条件: 30日連続で記録する' },
+    { id: 'time_100', icon: '⏱️', name: '努力の積み上げ', detail: 'コツコツ積み上げて合計100分を超えた証です。', conditionText: '条件: 合計100分以上トレーニングする' },
+    { id: 'time_500', icon: '🏆', name: '筋肉の勲章', detail: 'かなり頑張った人向けの大きな実績です。', conditionText: '条件: 合計500分以上トレーニングする' },
+    { id: 'ai_1', icon: '🤖', name: 'AIとの出会い', detail: 'AI相談を初めて使ったときに取れる実績です。', conditionText: '条件: AI相談を1回使う' },
+    { id: 'ai_5', icon: '🧠', name: 'AIマニア', detail: 'AI相談をたくさん活用した人向けの実績です。', conditionText: '条件: AI相談を5回使う' },
+    { id: 'rank_champion_1', icon: '🥇', name: '週間王者の第一歩', detail: '1週間の最終ランキングで1位を1回獲得する', conditionText: '条件: 1週間の最終ランキングで1位になる' },
+    { id: 'rank_champion_3', icon: '🏆', name: '常勝トップランナー', detail: '1週間の最終ランキングで1位を3回獲得する', conditionText: '条件: 1週間の最終ランキングで1位を3回獲得する' },
+    { id: 'rank_champion_5', icon: '👑', name: '絶対的覇者', detail: '1週間の最終ランキングで1位を5回獲得する', conditionText: '条件: 1週間の最終ランキングで1位を5回獲得する' },
+    { id: 'rank_consecutive_2', icon: '🎖️', name: '2連覇達成！', detail: '2週間連続で最終ランキング1位を獲得する', conditionText: '条件: 2週間連続で最終ランキング1位になる' },
+    { id: 'rank_consecutive_3', icon: '🏅', name: '伝説の3連覇！！', detail: '3週間連続で最終ランキング1位を獲得する', conditionText: '条件: 3週間連続で最終ランキング1位になる' },
+  ];
+
 
   const unlockedBadges = [
     { id: 'default_0', name: 'はじまりの一歩', icon: '🥚' },
@@ -310,11 +326,14 @@ export default function ProfileScreen() {
     void persistProfileState({ rank: fullBadgeString }, { syncAfterSave: false, equippedBadge: fullBadgeString });
   };
 
-  const handleThemeChange = () => {
-    const currentIndex = THEME_OPTIONS.findIndex((opt) => opt.color === theme);
-    const nextIndex = (currentIndex + 1) % THEME_OPTIONS.length;
-    const nextTheme = THEME_OPTIONS[nextIndex];
-    void persistProfileState(undefined, { syncAfterSave: false, themeColor: nextTheme.color });
+  const openColorPicker = () => {
+    setTempColor(theme);
+    setShowColorPickerModal(true);
+  };
+
+  const confirmColorPicker = () => {
+    void persistProfileState(undefined, { syncAfterSave: false, themeColor: tempColor });
+    setShowColorPickerModal(false);
   };
 
   const handleCopyFriendId = async () => {
@@ -507,7 +526,7 @@ export default function ProfileScreen() {
         <View style={styles.menuSection}>
           <MenuLink icon="notifications-outline" label="通知設定" themeColor={theme} onPress={() => setShowNotifyModal(true)} />
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleThemeChange}>
+          <TouchableOpacity style={styles.menuItem} onPress={openColorPicker}>
             <View style={styles.menuLeft}>
               <Ionicons name="color-palette-outline" size={22} color={theme} />
               <Text style={styles.menuLabel}>テーマカラー変更</Text>
@@ -518,7 +537,7 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <MenuLink icon="people-outline" label="フレンド" themeColor={theme} onPress={() => router.push('/friends' as any)} />
+          <MenuLink icon="trophy-outline" label="実績一覧" themeColor={theme} onPress={() => setShowAchievementsModal(true)} />
           <MenuLink icon="help-circle-outline" label="ヘルプ・使い方" themeColor={theme} onPress={() => setShowHelpModal(true)} />
           <MenuLink icon="log-out-outline" label="ログアウト" color="#FF3B30" onPress={handleLogout} themeColor={theme} />
         </View>
@@ -638,6 +657,122 @@ export default function ProfileScreen() {
                 <Text style={styles.guideCloseButtonText}>わかった</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAchievementsModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="trophy-outline" size={24} color={theme} style={{ marginRight: 8 }} />
+                <Text style={styles.modalTitle}>実績一覧</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAchievementsModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {(() => {
+                const achievements = achievementItems.map((achievement) => ({
+                  ...achievement,
+                  unlocked: achievement.id === 'default_0' || workoutData.unlockedAchievements.includes(achievement.id),
+                }));
+                const unlockedCount = achievements.filter((achievement) => achievement.unlocked).length;
+
+                return (
+                  <>
+                    <View style={styles.summaryCard}>
+                      <Ionicons name="trophy-outline" size={22} color={theme} />
+                      <Text style={styles.summaryText}>
+                        取得済み <Text style={[styles.summaryHighlight, { color: theme }]}>{unlockedCount}</Text> / {achievements.length}
+                      </Text>
+                    </View>
+
+                    {achievements.map((achievement) => (
+                      <TouchableOpacity
+                        key={achievement.id}
+                        style={styles.achievementItem}
+                        activeOpacity={achievement.unlocked ? 0.8 : 1}
+                        onPress={() => {
+                          if (achievement.unlocked) {
+                            Alert.alert(achievement.name, `${achievement.detail}\n\n${achievement.conditionText}`);
+                          }
+                        }}
+                        disabled={!achievement.unlocked}
+                      >
+                        <View
+                          style={[
+                            styles.achievementIconCircle,
+                            { backgroundColor: achievement.unlocked ? `${theme}15` : '#F1F1F1' },
+                          ]}
+                        >
+                          <Text style={styles.achievementIconText}>{achievement.unlocked ? achievement.icon : '???'}</Text>
+                        </View>
+
+                        <View style={styles.achievementBody}>
+                          <Text style={[styles.achievementName, !achievement.unlocked && { color: COLORS.grayText }]}>
+                            {achievement.unlocked ? achievement.name : '？？？'}
+                          </Text>
+                          <Text style={styles.achievementMeta}>
+                            {achievement.unlocked ? 'タップで詳細を表示' : '未取得'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.achievementRightArea}>
+                          <View
+                            style={[
+                              styles.achievementStatusBadge,
+                              { backgroundColor: achievement.unlocked ? theme : '#D8D8D8' },
+                            ]}
+                          >
+                            <Text style={styles.achievementStatusBadgeText}>{achievement.unlocked ? 'GET' : 'LOCK'}</Text>
+                          </View>
+                          {achievement.unlocked ? (
+                            <Ionicons name="chevron-forward" size={18} color={theme} style={styles.achievementChevron} />
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                );
+              })()}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={showColorPickerModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { padding: 20, alignItems: 'center' }]}>
+            <Text style={[styles.modalTitle, { marginBottom: 20 }]}>テーマカラーを選択</Text>
+            
+            <ColorPicker
+              style={{ width: '100%', gap: 20 }}
+              value={tempColor}
+              onComplete={(colors) => setTempColor(colors.hex)}
+            >
+              <Preview hideText={true} />
+              <Panel1 />
+              <HueSlider />
+              <Swatches />
+            </ColorPicker>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 30, gap: 16, width: '100%' }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => setShowColorPickerModal(false)}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#555555' }}>キャンセル</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, backgroundColor: tempColor, alignItems: 'center', justifyContent: 'center' }}
+                onPress={confirmColorPicker}
+              >
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' }}>決定</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -773,8 +908,8 @@ const styles = StyleSheet.create({
   },
   menuLeft: { flexDirection: 'row', alignItems: 'center' },
   menuLabel: { fontSize: 16, marginLeft: 15, fontWeight: '500', color: '#333' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: COLORS.white, borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25, minHeight: 400, maxHeight: '80%' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: COLORS.white, borderRadius: 20, padding: 25, minHeight: 300, maxHeight: '80%', maxWidth: 480, width: '90%', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text },
   badgeItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.background },
@@ -785,6 +920,19 @@ const styles = StyleSheet.create({
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 },
   settingLabel: { fontSize: 17, fontWeight: '600', color: COLORS.text },
   settingSubLabel: { fontSize: 13, color: COLORS.grayText, marginTop: 4 },
+  summaryCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 16 },
+  summaryText: { fontSize: 14, color: COLORS.text },
+  summaryHighlight: { fontSize: 18, fontWeight: 'bold' },
+  achievementItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#EEEEEE', gap: 12 },
+  achievementIconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  achievementIconText: { fontSize: 22, fontWeight: 'bold' },
+  achievementBody: { flex: 1 },
+  achievementName: { fontSize: 15, fontWeight: 'bold', color: COLORS.text, marginBottom: 4 },
+  achievementMeta: { fontSize: 12, color: COLORS.grayText },
+  achievementRightArea: { alignItems: 'flex-end', gap: 6 },
+  achievementStatusBadge: { minWidth: 52, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center' },
+  achievementStatusBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
+  achievementChevron: { marginRight: 2 },
   helpListItem: { flexDirection: 'row', padding: 15, backgroundColor: '#FAFAFA', borderRadius: 15, marginBottom: 15, borderWidth: 1, borderColor: '#EEE' },
   helpIconContainer: { width: 50, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   helpTextContainer: { flex: 1 },

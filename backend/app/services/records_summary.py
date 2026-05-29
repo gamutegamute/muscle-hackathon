@@ -97,11 +97,16 @@ def build_records_summary(
     today_str = datetime.now(JST).date().isoformat()
     today_total_minutes = 0.0
 
+    week_start = (datetime.now(JST).date() - timedelta(days=6)).isoformat()
+
     for record in formatted:
         date = record.get("date")
         if date:
             increment = 1 if daily_value_key == "count" else float(record.get("minutes") or 0)
             daily_map[date] += increment
+
+            if week_start <= date <= today_str:
+                weekly_total_minutes += float(record.get("minutes") or 0)
 
         menu_name = record.get("menuName")
         if menu_name:
@@ -125,6 +130,7 @@ def build_records_summary(
     return {
         "userId": user_id,
         "totalMinutes": round(sum(record.get("minutes", 0) or 0 for record in formatted), 1),
+        "weeklyTotalMinutes": round(weekly_total_minutes, 1),
         "totalRecords": len(formatted),
         "todayRecords": sum(1 for record in formatted if record.get("date") == today_str),
         "todayTotalMinutes": round(today_total_minutes, 1),

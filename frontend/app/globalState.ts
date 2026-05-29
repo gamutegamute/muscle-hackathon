@@ -17,6 +17,7 @@ export type WorkoutRecord = {
 
 type WorkoutSummary = {
   totalMinutes?: number;
+  weeklyTotalMinutes?: number;
   streakDays?: number;
   todayTotalMinutes?: number;
   todayRecords?: number;
@@ -41,6 +42,7 @@ type AchievementDefinition = {
     maxStreakDays: number;
     totalMinutes: number;
     aiConsultationCount: number;
+    weeklyRankHistory: number[];
   }) => boolean;
 };
 
@@ -83,6 +85,7 @@ function calculateMaxStreakDays(dates: string[]) {
 
 export const workoutData = {
   totalMinutes: 0,
+  weeklyTotalMinutes: 0,
   todayTotalMinutes: 0,
   todayRecords: 0,
   streakDays: 0,
@@ -90,8 +93,11 @@ export const workoutData = {
   aiConsultationCount: 0,
   markedDates: {} as Record<string, { selected: boolean; selectedColor: string }>,
   unlockedAchievements: [] as string[],
+  isDevMode: false,
+  originalUnlockedIds: [] as string[],
   latestAchievementId: null as string | null,
   achievementProgressLoadedForUserId: null as string | null,
+  weeklyRankHistory: [] as number[],
   records: [] as WorkoutRecord[],
   equippedBadge: DEFAULT_BADGE,
   themeColor: '#A4C639',
@@ -178,6 +184,7 @@ export const workoutData = {
 
   applySummary(summary: WorkoutSummary) {
     this.totalMinutes = summary.totalMinutes ?? this.totalMinutes;
+    this.weeklyTotalMinutes = summary.weeklyTotalMinutes ?? this.weeklyTotalMinutes;
     this.todayTotalMinutes = summary.todayTotalMinutes ?? this.todayTotalMinutes;
     this.todayRecords = summary.todayRecords ?? this.todayRecords;
     this.streakDays = summary.streakDays ?? this.streakDays;
@@ -204,6 +211,7 @@ export const workoutData = {
   resetData(options?: { userId?: string; sessionMode?: SessionMode }) {
     const nextUserId = options?.userId ?? '';
     this.totalMinutes = 0;
+    this.weeklyTotalMinutes = 0;
     this.todayTotalMinutes = 0;
     this.todayRecords = 0;
     this.streakDays = 0;
@@ -213,6 +221,7 @@ export const workoutData = {
     this.unlockedAchievements = [];
     this.latestAchievementId = null;
     this.achievementProgressLoadedForUserId = null;
+    this.weeklyRankHistory = [];
     this.records = [];
     this.equippedBadge = '';
     this.themeColor = '#A4C639';
@@ -257,6 +266,19 @@ export const workoutData = {
     };
   },
 
+  setDevMode(enabled: boolean) {
+    if (this.isDevMode === enabled) return;
+    this.isDevMode = enabled;
+    if (enabled) {
+      this.originalUnlockedIds = [...this.unlockedAchievements];
+      this.unlockedAchievements = this.ACHIEVEMENTS.map(a => a.id);
+    } else {
+      this.unlockedAchievements = [...this.originalUnlockedIds];
+      this.originalUnlockedIds = [];
+    }
+    this.dataListeners.forEach(l => l());
+  },
+
   subscribeData(listener: () => void) {
     this.dataListeners.push(listener);
     return () => {
@@ -273,6 +295,7 @@ export const workoutData = {
     const progress = await loadAchievementProgress(userId);
     this.unlockedAchievements = [...progress.unlockedAchievements];
     this.aiConsultationCount = progress.aiConsultationCount;
+    this.weeklyRankHistory = [...progress.weeklyRankHistory];
     this.latestAchievementId = null;
     this.achievementProgressLoadedForUserId = userId;
   },
@@ -280,9 +303,15 @@ export const workoutData = {
   persistAchievementProgress() {
     const userId = this.getUserId();
     this.achievementProgressLoadedForUserId = userId;
+    
+    const achievementsToSave = this.isDevMode 
+      ? [...this.originalUnlockedIds]
+      : [...this.unlockedAchievements];
+
     void saveAchievementProgress(userId, {
-      unlockedAchievements: [...this.unlockedAchievements],
+      unlockedAchievements: achievementsToSave,
       aiConsultationCount: this.aiConsultationCount,
+      weeklyRankHistory: [...this.weeklyRankHistory],
     });
   },
 
@@ -310,6 +339,15 @@ export const workoutData = {
 
   clearLatestAchievement() {
     this.latestAchievementId = null;
+  },
+
+  addWeeklyRank(rank: number) {
+    if (rank <= 0) {
+      return;
+    }
+    this.weeklyRankHistory = [...this.weeklyRankHistory, rank].slice(-12);
+    this.checkAchievements();
+    this.persistAchievementProgress();
   },
 
   addWorkout(mins: number, dateStr: string, menu: string, memo: string) {
@@ -351,5 +389,10 @@ export const workoutData = {
     { id: 'time_500', icon: '🏅', name: '筋肉の勲章', condition: (d) => d.totalMinutes >= 500 },
     { id: 'ai_1', icon: '🤖', name: 'AIとの出会い', condition: (d) => d.aiConsultationCount >= 1 },
     { id: 'ai_5', icon: '🧠', name: 'AIマニア', condition: (d) => d.aiConsultationCount >= 5 },
+    { id: 'weekly_1', icon: '🥇', name: '今週のトップランナー', condition: (d) => d.weeklyRankHistory.length > 0 && d.weeklyRankHistory[d.weeklyRankHistory.length - 1] === 1 },
+    { id: 'weekly_2', icon: '🏆', name: '2週連続チャンピオン', condition: (d) => d.weeklyRankHistory.slice(-2).length === 2 && d.weeklyRankHistory.slice(-2).every((rank) => rank === 1) },
+    { id: 'weekly_3', icon: '👑', name: '3週連続キング', condition: (d) => d.weeklyRankHistory.slice(-3).length === 3 && d.weeklyRankHistory.slice(-3).every((rank) => rank === 1) },
+    { id: 'weekly_5', icon: '🏅', name: '5週連続キング', condition: (d) => d.weeklyRankHistory.slice(-5).length === 5 && d.weeklyRankHistory.slice(-5).every((rank) => rank === 1) },
+    { id: 'weekly_ten', icon: '🎖️', name: '今週のスプリント', condition: (d) => d.weeklyRankHistory.length > 0 && d.weeklyRankHistory[d.weeklyRankHistory.length - 1] <= 10 },
   ] as AchievementDefinition[],
 };

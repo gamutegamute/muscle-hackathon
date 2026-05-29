@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 
 import { workoutData } from '@/app/globalState';
@@ -19,6 +20,7 @@ export interface Friend {
   rank: string;
   consecutiveDays: number;
   totalTime: number;
+  weeklyTotalTime: number;
   achievementCount: number;
   recentActivity: string[];
 }
@@ -32,6 +34,8 @@ export interface FriendRequest {
   rank: string;
 }
 
+const MAX_FRIENDS = 30;
+
 function toFriend(friend: ApiFriend): Friend {
   return {
     id: friend.userId,
@@ -41,6 +45,7 @@ function toFriend(friend: ApiFriend): Friend {
     rank: friend.rank ?? '',
     consecutiveDays: friend.consecutiveDays ?? 0,
     totalTime: friend.totalTime ?? 0,
+    weeklyTotalTime: friend.weeklyTotalTime ?? 0,
     achievementCount: friend.achievementCount ?? 0,
     recentActivity: friend.recentActivity ?? [],
   };
@@ -111,24 +116,44 @@ export function useFriends() {
   }, []);
 
   const sendRequest = useCallback(async (userId: string) => {
+    if (friends.length >= MAX_FRIENDS) {
+      Alert.alert('フレンドの上限（30人）に達しています', 'これ以上フレンドを追加できません。');
+      return;
+    }
+
     setIsLoading(true);
     try {
       await sendFriendRequest(userId);
       setSentRequests((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    } catch (error) {
+      Alert.alert(
+        'フレンド追加に失敗しました',
+        error instanceof Error ? error.message : '通信エラーが発生しました。',
+      );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [friends.length]);
 
   const approveRequest = useCallback(async (requestId: string) => {
+    if (friends.length >= MAX_FRIENDS) {
+      Alert.alert('フレンドの上限（30人）に達しています', 'これ以上フレンドを承認できません。');
+      return;
+    }
+
     setIsLoading(true);
     try {
       await approveFriendRequest(requestId);
       await refreshFriends();
+    } catch (error) {
+      Alert.alert(
+        'フレンド承認に失敗しました',
+        error instanceof Error ? error.message : '通信エラーが発生しました。',
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [refreshFriends]);
+  }, [friends.length, refreshFriends]);
 
   const rejectRequest = useCallback(async (requestId: string) => {
     setIsLoading(true);
@@ -141,7 +166,9 @@ export function useFriends() {
   }, [refreshFriends]);
 
   const getRankingByTotalTime = useCallback(() => {
-    return [...friends].sort((a, b) => b.totalTime - a.totalTime);
+    return [...friends].sort(
+      (a, b) => (b.weeklyTotalTime || b.totalTime) - (a.weeklyTotalTime || a.totalTime),
+    );
   }, [friends]);
 
   const getRankingByConsecutiveDays = useCallback(() => {

@@ -85,6 +85,41 @@ const ACHIEVEMENT_ITEMS: AchievementItem[] = [
     detail: 'AI相談をたくさん活用した人向けの実績です。',
     conditionText: '条件: AI相談を5回使う',
   },
+  {
+    id: 'rank_champion_1',
+    icon: '🥇',
+    name: '週間王者の第一歩',
+    detail: '1週間の最終ランキングで1位を1回獲得する',
+    conditionText: '条件: 1週間の最終ランキングで1位になる',
+  },
+  {
+    id: 'rank_champion_3',
+    icon: '🏆',
+    name: '常勝トップランナー',
+    detail: '1週間の最終ランキングで1位を3回獲得する',
+    conditionText: '条件: 1週間の最終ランキングで1位を3回獲得する',
+  },
+  {
+    id: 'rank_champion_5',
+    icon: '👑',
+    name: '絶対的覇者',
+    detail: '1週間の最終ランキングで1位を5回獲得する',
+    conditionText: '条件: 1週間の最終ランキングで1位を5回獲得する',
+  },
+  {
+    id: 'rank_consecutive_2',
+    icon: '🎖️',
+    name: '2連覇達成！',
+    detail: '2週間連続で最終ランキング1位を獲得する',
+    conditionText: '条件: 2週間連続で最終ランキング1位になる',
+  },
+  {
+    id: 'rank_consecutive_3',
+    icon: '🏅',
+    name: '伝説の3連覇！！',
+    detail: '3週間連続で最終ランキング1位を獲得する',
+    conditionText: '条件: 3週間連続で最終ランキング1位になる',
+  },
 ];
 
 export default function AchievementsHistoryScreen() {

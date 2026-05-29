@@ -92,14 +92,14 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-              <Ionicons name="close" size={22} color={theme} />
+      <Stack.Screen 
+        options={{ 
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+              <Ionicons name="arrow-back" size={24} color={theme} />
             </TouchableOpacity>
-          ),
-        }}
+          )
+        }} 
       />
       {isRegistered && (
         <View style={styles.profileShareRow}>

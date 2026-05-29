@@ -42,14 +42,14 @@ export default function RequestsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-              <Ionicons name="close" size={22} color={theme} />
+      <Stack.Screen 
+        options={{ 
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+              <Ionicons name="arrow-back" size={24} color={theme} />
             </TouchableOpacity>
-          ),
-        }}
+          )
+        }} 
       />
       {isLoading && <ActivityIndicator size="large" color={theme} style={{ marginTop: 20 }} />}
       {friendRequests.length === 0 ? (

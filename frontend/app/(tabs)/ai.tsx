@@ -225,9 +225,7 @@ export default function AiChatScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: COLORS.white }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/home')}>
-          <Text style={[styles.backButtonText, { color: theme }]}>戻る</Text>
-        </TouchableOpacity>
+        <View style={{ width: 60 }} />
         <Text style={styles.headerTitle}>AIトレーナー相談</Text>
         <View style={{ width: 60 }} />
       </View>
@@ -336,21 +334,21 @@ const styles = StyleSheet.create({
   backButtonText: { fontSize: 16, fontWeight: '600' },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
   chatContent: { paddingHorizontal: 15, paddingTop: 20, paddingBottom: 20 },
-  bubbleWrapper: { flexDirection: 'row', marginBottom: 15, maxWidth: '85%' },
+  bubbleWrapper: { flexDirection: 'row', marginBottom: 15, maxWidth: '85%', flexShrink: 1 },
   aiWrapper: { alignSelf: 'flex-start' },
   userWrapper: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   aiAvatar: {
     marginRight: 8,
     zIndex: 1,
   },
-  bubble: { paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, position: 'relative' },
+  bubble: { paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, position: 'relative', flexShrink: 1 },
   aiBubble: { backgroundColor: COLORS.aiBubble, borderTopLeftRadius: 5 },
   bubbleText: { fontSize: 15, lineHeight: 22 },
   aiBubbleText: { color: COLORS.text },
   userBubbleText: { color: COLORS.white, fontWeight: '500' },
   inputArea: { backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
   suggestionList: { paddingVertical: 10, backgroundColor: COLORS.white },
-  suggestionListContent: { paddingHorizontal: 15, gap: 10 },
+  suggestionListContent: { paddingHorizontal: 15, gap: 10, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   suggestionButton: {
     backgroundColor: COLORS.white,
     paddingHorizontal: 15,

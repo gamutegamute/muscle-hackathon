@@ -11,6 +11,7 @@ class FriendProfileResponse(CamelModel):
     rank: str = ""
     consecutiveDays: int = 0
     totalTime: int = 0
+    weeklyTotalTime: int = 0
     achievementCount: int = 0
     recentActivity: list[str] = []
 
@@ -28,6 +29,7 @@ class UserRankingResponse(CamelModel):
     name: str = ""
     avatar: Optional[str] = None
     totalTime: int = 0
+    weeklyTotalTime: int = 0
     displayName: str
     photoURL: Optional[str] = None
     streakDays: int = 0

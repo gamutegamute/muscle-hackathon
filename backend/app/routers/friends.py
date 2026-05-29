@@ -27,6 +27,17 @@ def get_user_records(user_id: str) -> list[dict]:
     return [doc.to_dict() for doc in docs]
 
 
+def count_accepted_friends(user_id: str) -> int:
+    accepted_docs = (
+        db.collection("users")
+        .document(user_id)
+        .collection("friends")
+        .where("status", "==", "accepted")
+        .stream()
+    )
+    return sum(1 for _ in accepted_docs)
+
+
 def build_public_profile(user_id: str) -> FriendProfileResponse | None:
     user_data = get_user_doc(user_id)
     if not user_data:
@@ -57,6 +68,7 @@ def build_public_profile(user_id: str) -> FriendProfileResponse | None:
         rank=rank,
         consecutiveDays=summary.get("streakDays", 0),
         totalTime=int(summary.get("totalMinutes", 0) or 0),
+        weeklyTotalTime=int(summary.get("weeklyTotalMinutes", 0) or 0),
         achievementCount=int(user_data.get("achievementCount") or 0),
         recentActivity=recent_activity,
         displayName=name,
@@ -153,6 +165,9 @@ async def send_friend_request(
     if current_uid == to_uid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot request yourself")
 
+    if count_accepted_friends(current_uid) >= 30:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="friend limit reached")
+
     if not get_user_doc(to_uid):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
 
@@ -189,6 +204,12 @@ async def approve_friend_request(
     friend_uid = request.friendUserId
     if current_uid == friend_uid:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot approve yourself")
+
+    if count_accepted_friends(current_uid) >= 30:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="friend limit reached")
+
+    if count_accepted_friends(friend_uid) >= 30:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="friend limit reached")
 
     request_ref = db.collection("users").document(current_uid).collection("friendRequests").document(friend_uid)
     if not request_ref.get().exists:

@@ -25,6 +25,7 @@ export type ApiFriend = {
   rank?: string | null;
   consecutiveDays: number;
   totalTime: number;
+  weeklyTotalTime?: number;
   achievementCount: number;
   recentActivity: string[];
 };
@@ -49,6 +50,7 @@ export type ApiRecord = {
 export type ApiSummary = {
   userId: string;
   totalMinutes: number;
+  weeklyTotalMinutes?: number;
   totalRecords: number;
   todayRecords: number;
   todayTotalMinutes: number;

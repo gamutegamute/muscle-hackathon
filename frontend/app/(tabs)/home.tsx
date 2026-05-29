@@ -321,20 +321,6 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.historyCard}
-          activeOpacity={0.8}
-          onPress={() => router.push('/achievements_history')}
-        >
-          <View style={styles.historyHeader}>
-            <Ionicons name="trophy-outline" size={24} color={theme} />
-            <Text style={[styles.historyTitle, { color: theme }]}>実績一覧</Text>
-          </View>
-          <View style={styles.historyLinkRow}>
-            <Text style={styles.historyLinkText}>取得済みの実績を確認できます。</Text>
-            <Ionicons name="chevron-forward" size={22} color={theme} />
-          </View>
-        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

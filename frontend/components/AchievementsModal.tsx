@@ -83,6 +83,41 @@ const ACHIEVEMENT_ITEMS: AchievementItem[] = [
     detail: 'AI相談をたくさん活用した人向けの実績です。',
     conditionText: '条件: AI相談を5回使う',
   },
+  {
+    id: 'weekly_1',
+    icon: '🥇',
+    name: '今週のトップランナー',
+    detail: '今週のフレンドランキングで1位になった実績です。',
+    conditionText: '条件: 今週のランキング1位になる',
+  },
+  {
+    id: 'weekly_2',
+    icon: '🏆',
+    name: '2週連続チャンピオン',
+    detail: '2週連続でランキング1位を獲得した実績です。',
+    conditionText: '条件: 2週連続でランキング1位になる',
+  },
+  {
+    id: 'weekly_3',
+    icon: '👑',
+    name: '3週連続キング',
+    detail: '3週連続でランキング1位を守り抜いた実績です。',
+    conditionText: '条件: 3週連続でランキング1位になる',
+  },
+  {
+    id: 'weekly_5',
+    icon: '🏅',
+    name: '5週連続キング',
+    detail: '5週連続でランキング1位を維持した実績です。',
+    conditionText: '条件: 5週連続でランキング1位になる',
+  },
+  {
+    id: 'weekly_ten',
+    icon: '🎖️',
+    name: '今週のスプリント',
+    detail: '今週のフレンドランキングで上位10位以内に入った実績です。',
+    conditionText: '条件: 今週のランキング10位以内になる',
+  },
 ];
 
 type Props = {

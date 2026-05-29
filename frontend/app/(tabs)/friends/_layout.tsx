@@ -1,11 +1,18 @@
 import { Stack } from 'expo-router';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { workoutData } from '../../globalState';
 
 export default function FriendsLayout() {
   const isDark = useColorScheme() === 'dark';
-  const themeColor = workoutData.themeColor || '#A4C639';
+  const [themeColor, setThemeColor] = useState(workoutData.themeColor || '#A4C639');
+
+  useEffect(() => {
+    const unsubscribe = workoutData.subscribeColor((newColor) => {
+      setThemeColor(newColor);
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <Stack
@@ -16,7 +23,7 @@ export default function FriendsLayout() {
         headerBackVisible: false,
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'フレンド', headerShadowVisible: false }} />
+      <Stack.Screen name="index" options={{ title: 'フレンド', headerShadowVisible: false, headerLeft: () => null }} />
       <Stack.Screen name="[id]" options={{ title: 'フレンド詳細', headerShadowVisible: false }} />
       <Stack.Screen name="search" options={{ title: 'フレンド検索', presentation: 'modal' }} />
       <Stack.Screen name="requests" options={{ title: 'フレンド申請', presentation: 'modal' }} />
