@@ -102,6 +102,7 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<(AchievementItem & { unlocked: boolean }) | null>(null);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [vibeEnabled, setVibeEnabled] = useState(workoutData.isVibrationEnabled);
@@ -735,13 +736,19 @@ export default function ProfileScreen() {
                 <Ionicons name="trophy-outline" size={24} color={theme} style={{ marginRight: 8 }} />
                 <Text style={styles.modalTitle}>実績一覧</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowAchievementsModal(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedAchievement(null);
+                  setShowAchievementsModal(false);
+                }}
+              >
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              {(() => {
+            {selectedAchievement ? null : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {(() => {
                 const achievements = achievementItems.map((achievement) => ({
                   ...achievement,
                   unlocked: achievement.id === 'default_0' || workoutData.unlockedAchievements.includes(achievement.id),
@@ -764,7 +771,7 @@ export default function ProfileScreen() {
                         activeOpacity={achievement.unlocked ? 0.8 : 1}
                         onPress={() => {
                           if (achievement.unlocked) {
-                            Alert.alert(achievement.name, `${achievement.detail}\n\n${achievement.conditionText}`);
+                            setSelectedAchievement(achievement);
                           }
                         }}
                         disabled={!achievement.unlocked}
@@ -805,7 +812,21 @@ export default function ProfileScreen() {
                   </>
                 );
               })()}
-            </ScrollView>
+              </ScrollView>
+            )}
+            {selectedAchievement ? (
+              <View style={styles.achievementDetailPanel}>
+                <View style={[styles.achievementIconCircle, { backgroundColor: `${theme}15`, marginBottom: 12 }]}>
+                  <Text style={styles.achievementIconText}>{selectedAchievement.icon}</Text>
+                </View>
+                <Text style={styles.achievementDetailTitle}>{selectedAchievement.name}</Text>
+                <Text style={styles.achievementDetailText}>{selectedAchievement.detail}</Text>
+                <Text style={styles.achievementDetailCondition}>{selectedAchievement.conditionText}</Text>
+                <TouchableOpacity style={[styles.achievementDetailCloseButton, { backgroundColor: theme }]} onPress={() => setSelectedAchievement(null)}>
+                  <Text style={styles.achievementDetailCloseText}>戻る</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -1016,6 +1037,12 @@ const styles = StyleSheet.create({
   achievementStatusBadge: { minWidth: 52, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center' },
   achievementStatusBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
   achievementChevron: { marginRight: 2 },
+  achievementDetailPanel: { position: 'absolute', left: 0, right: 0, top: 64, bottom: 0, backgroundColor: COLORS.white, borderRadius: 18, padding: 24, alignItems: 'center', justifyContent: 'center' },
+  achievementDetailTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, textAlign: 'center', marginBottom: 12 },
+  achievementDetailText: { fontSize: 14, color: COLORS.text, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
+  achievementDetailCondition: { fontSize: 13, color: COLORS.grayText, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  achievementDetailCloseButton: { width: '100%', borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
+  achievementDetailCloseText: { color: COLORS.white, fontSize: 15, fontWeight: 'bold' },
   helpListItem: { flexDirection: 'row', padding: 15, backgroundColor: '#FAFAFA', borderRadius: 15, marginBottom: 15, borderWidth: 1, borderColor: '#EEE' },
   helpIconContainer: { width: 50, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   helpTextContainer: { flex: 1 },

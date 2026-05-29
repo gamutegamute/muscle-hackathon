@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { workoutData } from './globalState';
 import { syncWorkoutData } from '@/lib/workout-sync';
@@ -126,6 +126,7 @@ export default function AchievementsHistoryScreen() {
   const router = useRouter();
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [pageVersion, setPageVersion] = useState(0);
+  const [selectedAchievement, setSelectedAchievement] = useState<(AchievementItem & { unlocked: boolean }) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -158,7 +159,7 @@ export default function AchievementsHistoryScreen() {
       return;
     }
 
-    Alert.alert(achievement.name, `${achievement.detail}\n\n${achievement.conditionText}`);
+    setSelectedAchievement(achievement);
   };
 
   return (
@@ -222,6 +223,22 @@ export default function AchievementsHistoryScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <Modal visible={selectedAchievement !== null} transparent animationType="fade">
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailModal}>
+            <View style={[styles.iconCircle, { backgroundColor: `${theme}15`, marginBottom: 12 }]}>
+              <Text style={styles.iconText}>{selectedAchievement?.icon}</Text>
+            </View>
+            <Text style={styles.detailTitle}>{selectedAchievement?.name}</Text>
+            <Text style={styles.detailText}>{selectedAchievement?.detail}</Text>
+            <Text style={styles.detailCondition}>{selectedAchievement?.conditionText}</Text>
+            <TouchableOpacity style={[styles.detailCloseButton, { backgroundColor: theme }]} onPress={() => setSelectedAchievement(null)}>
+              <Text style={styles.detailCloseText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -332,5 +349,52 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginRight: 2,
+  },
+  detailOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  detailModal: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  detailTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  detailText: {
+    fontSize: 14,
+    color: COLORS.text,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  detailCondition: {
+    fontSize: 13,
+    color: COLORS.grayText,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  detailCloseButton: {
+    width: '100%',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  detailCloseText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });
