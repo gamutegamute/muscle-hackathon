@@ -92,6 +92,7 @@ const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme
       {pickerWidth > 0 && (
         <FlatList
           ref={pickerRef}
+          style={styles.pickerList}
           data={data}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -159,6 +160,7 @@ export default function DetailedRecordScreen() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [swTime, setSwTime] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [showWearableModal, setShowWearableModal] = useState(false);
 
   const countRef = useRef<FlatList>(null);
@@ -235,6 +237,7 @@ export default function DetailedRecordScreen() {
 
   const validateAndSave = async (finalDurationSeconds: number) => {
     if (!menu.trim()) {
+      setSaveError('メニュー名を入力してください。');
       Alert.alert('メニューが未入力です', 'AIに相談してみますか？', [
         { text: '自分で入力する', style: 'cancel' },
         { text: 'AIに相談する', onPress: () => router.push('/ai') },
@@ -243,6 +246,7 @@ export default function DetailedRecordScreen() {
     }
 
     try {
+      setSaveError('');
       setIsSaving(true);
       await syncWorkoutData().catch(() => {});
       await saveRecordToBackend({
@@ -257,7 +261,9 @@ export default function DetailedRecordScreen() {
         rounds: activeTab === 'input' ? sets : rounds,
       });
       router.push('/record_complete');
-    } catch {
+    } catch (error) {
+      console.warn('Failed to save record:', error);
+      setSaveError('記録の保存に失敗しました。通信状態を確認してもう一度試してください。');
       Alert.alert('保存エラー', '記録の保存に失敗しました。バックエンドの起動や接続先を確認してください。');
     } finally {
       setIsSaving(false);
@@ -399,8 +405,14 @@ export default function DetailedRecordScreen() {
             placeholder="メニュー名（例: スクワット）"
             placeholderTextColor={COLORS.grayText}
             value={menu}
-            onChangeText={setMenu}
+            onChangeText={(text) => {
+              setMenu(text);
+              if (saveError) {
+                setSaveError('');
+              }
+            }}
           />
+          {saveError ? <Text style={styles.saveErrorText}>{saveError}</Text> : null}
 
           {activeTab === 'input' ? (
             <View>
@@ -553,14 +565,14 @@ function getTime() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  container: { flex: 1, width: '100%', maxWidth: '100%', overflow: 'hidden', backgroundColor: COLORS.background },
+  header: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
   saveBtn: { paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
   saveBtnText: { color: 'white', fontWeight: 'bold' },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  dateTimeRow: { flexDirection: 'row', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
-  dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  scrollContent: { width: '100%', maxWidth: '100%', paddingHorizontal: 20, paddingBottom: 40 },
+  dateTimeRow: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
+  dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
   dateBadge: {
     backgroundColor: COLORS.white,
     paddingVertical: 10,
@@ -584,17 +596,19 @@ const styles = StyleSheet.create({
   tabText: { color: COLORS.grayText, fontSize: 13 },
   activeTabText: { color: COLORS.text, fontWeight: 'bold' },
   menuInput: { backgroundColor: COLORS.white, borderRadius: 12, padding: 15, fontSize: 18, marginBottom: 15, borderWidth: 1, borderColor: '#DDD', color: COLORS.text },
-  row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  half: { flex: 1 },
+  saveErrorText: { color: COLORS.accentRed, fontSize: 13, fontWeight: '600', marginTop: -6, marginBottom: 12 },
+  row: { width: '100%', flexDirection: 'row', gap: 10, marginBottom: 20 },
+  half: { flex: 1, minWidth: 0 },
   label: { fontSize: 14, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
   highlight: { fontSize: 18, fontWeight: 'bold' },
-  pickerWrapper: { height: 60, backgroundColor: COLORS.white, borderRadius: 15, justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  pickerWrapper: { width: '100%', minWidth: 0, height: 60, backgroundColor: COLORS.white, borderRadius: 15, justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  pickerList: { width: '100%', minWidth: 0 },
   centerIndicator: { position: 'absolute', left: '50%', marginLeft: -ITEM_WIDTH / 2, width: ITEM_WIDTH, height: 45, borderRadius: 10, borderWidth: 2, zIndex: 10 },
   numberItem: { width: ITEM_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' },
   numberText: { fontSize: 16, color: COLORS.grayText },
   activeNumberText: { fontSize: 22, fontWeight: 'bold' },
   timeSection: { marginBottom: 20 },
-  timePickers: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  timePickers: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeSeparator: { fontSize: 20, fontWeight: 'bold', color: COLORS.grayText },
   dateTimeContainer: { width: '100%' },
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
@@ -604,7 +618,7 @@ const styles = StyleSheet.create({
   swBtnPrimaryText: { color: '#fff', fontWeight: '700' },
   swBtnSecondary: { width: 120, borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginHorizontal: 12, backgroundColor: COLORS.grayBackground },
   swBtnSecondaryText: { color: COLORS.text, fontWeight: '700' },
-  inlineInput: { flexShrink: 1, minWidth: 100, maxWidth: 200 },
+  inlineInput: { flexShrink: 1, minWidth: 88, maxWidth: 200 },
   memoInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, height: 100, textAlignVertical: 'top', color: COLORS.text, borderWidth: 1, borderColor: '#DDD' },
   card: { backgroundColor: COLORS.white, borderRadius: 20, padding: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
   stepperContainer: { marginBottom: 10 },

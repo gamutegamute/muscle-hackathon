@@ -12,6 +12,7 @@ import {
   createRecord,
   updateRecord,
 } from '@/lib/api';
+import { auth } from '@/lib/firebase-client';
 import { getExpoPushToken } from '@/lib/push-notifications';
 
 function toLocalRecord(record: ApiRecord): WorkoutRecord {
@@ -173,7 +174,18 @@ export async function saveRecordToBackend(input: {
   interval?: number;
   rounds?: number;
 }) {
-  const userId = workoutData.getUserId();
+  const firebaseUserId = auth.currentUser?.uid;
+  let userId = workoutData.getUserId();
+
+  if (firebaseUserId) {
+    userId = firebaseUserId;
+    workoutData.setSessionMode('registered');
+    workoutData.setUserProfile({ userId });
+  } else if (workoutData.sessionMode !== 'guest' || !userId.startsWith('guest-')) {
+    const { startNewGuestSession } = await import('@/lib/guest-session');
+    userId = await startNewGuestSession();
+  }
+
   const durationSeconds = Math.max(0, input.durationSeconds);
   const normalizedDate = input.dateStr.replace(/\//g, '-');
   const normalizedTime = input.timeStr || '00:00';
