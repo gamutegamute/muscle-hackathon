@@ -41,6 +41,18 @@ function getLocalDateParts() {
   };
 }
 
+function getCurrentWeekKey() {
+  const now = new Date();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysSinceMonday = (weekStart.getDay() + 6) % 7;
+  weekStart.setDate(weekStart.getDate() - daysSinceMonday);
+
+  const year = weekStart.getFullYear();
+  const month = String(weekStart.getMonth() + 1).padStart(2, '0');
+  const day = String(weekStart.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getSelfPeriodMinutes(period: RankingPeriod) {
   const { today, monthPrefix, yearPrefix, weekStartMs, todayEndMs } = getLocalDateParts();
 
@@ -126,6 +138,15 @@ export default function RankingScreen() {
   const ranking = (currentUser ? [currentUser, ...friends] : friends)
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .sort((a, b) => getRankingMinutes(b) - getRankingMinutes(a));
+  const weeklySelfRank = ranking.findIndex((item) => item.isSelf) + 1;
+
+  useEffect(() => {
+    if (period !== 'weekly' || !shouldShowCurrentUser || weeklySelfRank <= 0) {
+      return;
+    }
+
+    workoutData.addWeeklyRank(weeklySelfRank, getCurrentWeekKey());
+  }, [period, shouldShowCurrentUser, weeklySelfRank]);
 
   const getRankColor = (index: number) => {
     if (index === 0) return COLORS.gold;

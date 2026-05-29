@@ -4,12 +4,14 @@ type AchievementProgress = {
   unlockedAchievements: string[];
   aiConsultationCount: number;
   weeklyRankHistory: number[];
+  weeklyRankWeeks: string[];
 };
 
 const DEFAULT_PROGRESS: AchievementProgress = {
   unlockedAchievements: [],
   aiConsultationCount: 0,
   weeklyRankHistory: [],
+  weeklyRankWeeks: [],
 };
 
 function getStorageKey(userId: string) {
@@ -38,6 +40,9 @@ export async function loadAchievementProgress(userId: string): Promise<Achieveme
           : 0,
       weeklyRankHistory: Array.isArray(parsed.weeklyRankHistory)
         ? parsed.weeklyRankHistory.filter((value): value is number => typeof value === 'number')
+        : [],
+      weeklyRankWeeks: Array.isArray(parsed.weeklyRankWeeks)
+        ? parsed.weeklyRankWeeks.filter((value): value is string => typeof value === 'string')
         : [],
     };
   } catch {

@@ -58,6 +58,15 @@ const DEV_MODE_EXTRA_ACHIEVEMENT_IDS = [
 ];
 const DEFAULT_BADGE = '🥚 はじまりの一歩';
 
+function countWeeklyFirstPlaces(ranks: number[]) {
+  return ranks.filter((rank) => rank === 1).length;
+}
+
+function hasConsecutiveWeeklyFirstPlaces(ranks: number[], count: number) {
+  const recentRanks = ranks.slice(-count);
+  return recentRanks.length === count && recentRanks.every((rank) => rank === 1);
+}
+
 function calculateMaxStreakDays(dates: string[]) {
   const normalizedDates = Array.from(
     new Set(
@@ -105,6 +114,7 @@ export const workoutData = {
   latestAchievementId: null as string | null,
   achievementProgressLoadedForUserId: null as string | null,
   weeklyRankHistory: [] as number[],
+  weeklyRankWeeks: [] as string[],
   records: [] as WorkoutRecord[],
   equippedBadge: DEFAULT_BADGE,
   themeColor: '#A4C639',
@@ -151,6 +161,7 @@ export const workoutData = {
       this.achievementProgressLoadedForUserId = null;
       this.records = [];
       this.markedDates = {};
+      this.weeklyRankWeeks = [];
       this.equippedBadge = '';
     }
 
@@ -229,6 +240,7 @@ export const workoutData = {
     this.latestAchievementId = null;
     this.achievementProgressLoadedForUserId = null;
     this.weeklyRankHistory = [];
+    this.weeklyRankWeeks = [];
     this.records = [];
     this.equippedBadge = '';
     this.themeColor = '#A4C639';
@@ -303,6 +315,7 @@ export const workoutData = {
     if (this.isDevMode) {
       this.aiConsultationCount = progress.aiConsultationCount;
       this.weeklyRankHistory = [...progress.weeklyRankHistory];
+      this.weeklyRankWeeks = [...progress.weeklyRankWeeks];
       this.latestAchievementId = null;
       this.achievementProgressLoadedForUserId = userId;
       return;
@@ -311,6 +324,7 @@ export const workoutData = {
     this.unlockedAchievements = [...progress.unlockedAchievements];
     this.aiConsultationCount = progress.aiConsultationCount;
     this.weeklyRankHistory = [...progress.weeklyRankHistory];
+    this.weeklyRankWeeks = [...progress.weeklyRankWeeks];
     this.latestAchievementId = null;
     this.achievementProgressLoadedForUserId = userId;
   },
@@ -327,6 +341,7 @@ export const workoutData = {
       unlockedAchievements: achievementsToSave,
       aiConsultationCount: this.aiConsultationCount,
       weeklyRankHistory: [...this.weeklyRankHistory],
+      weeklyRankWeeks: [...this.weeklyRankWeeks],
     });
   },
 
@@ -342,6 +357,22 @@ export const workoutData = {
         this.unlock(achievement.id);
       }
     });
+
+    if (countWeeklyFirstPlaces(this.weeklyRankHistory) >= 1) {
+      this.unlock('rank_champion_1');
+    }
+    if (countWeeklyFirstPlaces(this.weeklyRankHistory) >= 3) {
+      this.unlock('rank_champion_3');
+    }
+    if (countWeeklyFirstPlaces(this.weeklyRankHistory) >= 5) {
+      this.unlock('rank_champion_5');
+    }
+    if (hasConsecutiveWeeklyFirstPlaces(this.weeklyRankHistory, 2)) {
+      this.unlock('rank_consecutive_2');
+    }
+    if (hasConsecutiveWeeklyFirstPlaces(this.weeklyRankHistory, 3)) {
+      this.unlock('rank_consecutive_3');
+    }
   },
 
   unlock(id: string) {
@@ -356,11 +387,26 @@ export const workoutData = {
     this.latestAchievementId = null;
   },
 
-  addWeeklyRank(rank: number) {
+  addWeeklyRank(rank: number, weekKey?: string) {
     if (rank <= 0) {
       return;
     }
-    this.weeklyRankHistory = [...this.weeklyRankHistory, rank].slice(-12);
+
+    if (weekKey) {
+      const existingIndex = this.weeklyRankWeeks.indexOf(weekKey);
+      if (existingIndex >= 0) {
+        this.weeklyRankHistory = this.weeklyRankHistory.map((savedRank, index) =>
+          index === existingIndex ? rank : savedRank,
+        );
+      } else {
+        this.weeklyRankWeeks = [...this.weeklyRankWeeks, weekKey].slice(-12);
+        this.weeklyRankHistory = [...this.weeklyRankHistory, rank].slice(-12);
+      }
+    } else {
+      this.weeklyRankHistory = [...this.weeklyRankHistory, rank].slice(-12);
+      this.weeklyRankWeeks = this.weeklyRankWeeks.slice(-this.weeklyRankHistory.length);
+    }
+
     this.checkAchievements();
     this.persistAchievementProgress();
   },
