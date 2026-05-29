@@ -23,6 +23,7 @@ import * as Clipboard from 'expo-clipboard';
 
 import { workoutData } from '../globalState';
 import { logoutFromFirebase } from '@/lib/auth';
+import { uploadAvatarImage } from '@/lib/avatar-upload';
 import { clearGuestSessionData, clearGuestSessionMarker } from '@/lib/guest-session';
 import { saveProfileToBackend, syncWorkoutData } from '@/lib/workout-sync';
 import { canRenderAvatarUri } from '@/lib/avatar';
@@ -107,6 +108,7 @@ export default function ProfileScreen() {
   const [isCheckingNotificationPermission, setIsCheckingNotificationPermission] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [showColorPickerModal, setShowColorPickerModal] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [tempColor, setTempColor] = useState(workoutData.themeColor);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
@@ -322,9 +324,28 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled) {
-      const imageUri = result.assets[0].uri;
+      const asset = result.assets[0];
+      const imageUri = asset.uri;
+
+      if (workoutData.sessionMode !== 'registered') {
+        setProfile((prev) => ({ ...prev, avatar: imageUri }));
+        void persistProfileState({ avatar: imageUri }, { syncAfterSave: false });
+        return;
+      }
+
+      setIsUploadingAvatar(true);
       setProfile((prev) => ({ ...prev, avatar: imageUri }));
-      void persistProfileState({ avatar: imageUri }, { syncAfterSave: false });
+
+      try {
+        const avatarUrl = await uploadAvatarImage(imageUri, asset.mimeType);
+        await persistProfileState({ avatar: avatarUrl }, { syncAfterSave: false });
+      } catch (error) {
+        console.warn('Failed to upload avatar:', error);
+        setProfile((prev) => ({ ...prev, avatar: workoutData.userProfile.avatar || null }));
+        Alert.alert('画像アップロードに失敗しました', '時間をおいてもう一度お試しください。');
+      } finally {
+        setIsUploadingAvatar(false);
+      }
     }
   };
 
@@ -443,7 +464,7 @@ export default function ProfileScreen() {
         <Text style={styles.pageTitle}>マイページ</Text>
 
         <View style={styles.profileHeader}>
-          <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8} disabled={isUploadingAvatar}>
             {canRenderAvatarUri(profile.avatar) ? (
               <Image source={{ uri: profile.avatar!.trim() }} style={styles.avatarImage} />
             ) : (
@@ -453,6 +474,7 @@ export default function ProfileScreen() {
               <Ionicons name="camera" size={14} color={COLORS.white} />
             </View>
           </TouchableOpacity>
+          {isUploadingAvatar ? <Text style={styles.avatarUploadText}>画像を保存中...</Text> : null}
 
           <View style={styles.nameContainer}>
             {isNameEditing ? (
@@ -856,6 +878,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarImage: { width: 100, height: 100, borderRadius: 50 },
+  avatarUploadText: { fontSize: 12, color: COLORS.grayText, marginBottom: 8 },
   cameraBadge: {
     position: 'absolute',
     bottom: 0,
