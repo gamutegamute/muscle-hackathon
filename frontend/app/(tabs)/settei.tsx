@@ -16,6 +16,7 @@ import {
   View,
   Switch,
   Image,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
@@ -112,6 +113,7 @@ export default function ProfileScreen() {
   const [tempColor, setTempColor] = useState(workoutData.themeColor);
   const [theme, setTheme] = useState(workoutData.themeColor);
   const [devMode, setDevMode] = useState(workoutData.isDevMode);
+  const canShowDevMode = Platform.OS !== 'web';
   const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
   const isPersistingNameRef = useRef(false);
   const profileRef = useRef<ProfileState>(getInitialProfileState());
@@ -578,25 +580,30 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <MenuLink icon="trophy-outline" label="実績一覧" themeColor={theme} onPress={() => setShowAchievementsModal(true)} />
-          <View style={{ borderTopWidth: 1, borderTopColor: COLORS.background }} />
-          <View style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="code-slash-outline" size={22} color={theme} />
-              <View style={{ marginLeft: 15, flex: 1 }}>
-                <Text style={[styles.menuLabel, { color: COLORS.text }]}>デベロッパーモード</Text>
-                <Text style={[styles.settingSubLabel, { marginTop: 4 }]}>ON にするとすべての実績が一時的に開放されます（ローカルのみ）</Text>
+          {canShowDevMode ? (
+            <>
+              <View style={{ borderTopWidth: 1, borderTopColor: COLORS.background }} />
+              <View style={styles.menuItem}>
+                <View style={styles.menuLeft}>
+                  <Ionicons name="code-slash-outline" size={22} color={theme} />
+                  <View style={styles.devModeTextContainer}>
+                    <Text style={[styles.menuLabel, { color: COLORS.text, marginLeft: 0 }]}>デベロッパーモード</Text>
+                    <Text style={[styles.settingSubLabel, { marginTop: 4 }]}>ON にするとすべての実績が一時的に開放されます（ローカルのみ）</Text>
+                  </View>
+                </View>
+                <Switch
+                  style={styles.devModeSwitch}
+                  trackColor={{ false: '#767577', true: `${theme}80` }}
+                  thumbColor={devMode ? theme : '#f4f3f4'}
+                  onValueChange={(value) => {
+                    workoutData.setDevMode(value);
+                    setDevMode(value);
+                  }}
+                  value={devMode}
+                />
               </View>
-            </View>
-            <Switch
-              trackColor={{ false: '#767577', true: `${theme}80` }}
-              thumbColor={devMode ? theme : '#f4f3f4'}
-              onValueChange={(value) => {
-                workoutData.setDevMode(value);
-                setDevMode(value);
-              }}
-              value={devMode}
-            />
-          </View>
+            </>
+          ) : null}
           <MenuLink icon="help-circle-outline" label="ヘルプ・使い方" themeColor={theme} onPress={() => setShowHelpModal(true)} />
           <MenuLink icon="log-out-outline" label="ログアウト" color="#FF3B30" onPress={handleLogout} themeColor={theme} />
         </View>
@@ -977,8 +984,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.background,
   },
-  menuLeft: { flexDirection: 'row', alignItems: 'center' },
-  menuLabel: { fontSize: 16, marginLeft: 15, fontWeight: '500', color: '#333' },
+  menuLeft: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
+  menuLabel: { flexShrink: 1, fontSize: 16, marginLeft: 15, fontWeight: '500', color: '#333' },
+  devModeTextContainer: { flex: 1, minWidth: 0, marginLeft: 15 },
+  devModeSwitch: { flexShrink: 0, marginLeft: 10 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: COLORS.white, borderRadius: 20, padding: 25, minHeight: 300, maxHeight: '80%', maxWidth: 480, width: '90%', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },

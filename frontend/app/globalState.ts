@@ -49,6 +49,13 @@ type AchievementDefinition = {
 export type SessionMode = 'logged_out' | 'guest' | 'registered';
 
 const DEFAULT_USER_ID = 'guest-user';
+const DEV_MODE_EXTRA_ACHIEVEMENT_IDS = [
+  'rank_champion_1',
+  'rank_champion_3',
+  'rank_champion_5',
+  'rank_consecutive_2',
+  'rank_consecutive_3',
+];
 const DEFAULT_BADGE = '🥚 はじまりの一歩';
 
 function calculateMaxStreakDays(dates: string[]) {
@@ -271,7 +278,7 @@ export const workoutData = {
     this.isDevMode = enabled;
     if (enabled) {
       this.originalUnlockedIds = [...this.unlockedAchievements];
-      this.unlockedAchievements = this.ACHIEVEMENTS.map(a => a.id);
+      this.unlockedAchievements = Array.from(new Set([...this.ACHIEVEMENTS.map(a => a.id), ...DEV_MODE_EXTRA_ACHIEVEMENT_IDS]));
     } else {
       this.unlockedAchievements = [...this.originalUnlockedIds];
       this.originalUnlockedIds = [];
@@ -293,6 +300,14 @@ export const workoutData = {
     }
 
     const progress = await loadAchievementProgress(userId);
+    if (this.isDevMode) {
+      this.aiConsultationCount = progress.aiConsultationCount;
+      this.weeklyRankHistory = [...progress.weeklyRankHistory];
+      this.latestAchievementId = null;
+      this.achievementProgressLoadedForUserId = userId;
+      return;
+    }
+
     this.unlockedAchievements = [...progress.unlockedAchievements];
     this.aiConsultationCount = progress.aiConsultationCount;
     this.weeklyRankHistory = [...progress.weeklyRankHistory];
