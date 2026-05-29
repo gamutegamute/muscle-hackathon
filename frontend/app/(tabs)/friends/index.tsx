@@ -25,16 +25,17 @@ const SEGMENT_ITEMS = [
 
 export default function FriendsScreen() {
   const router = useRouter();
-  const { friends, requests } = useFriends();
+  const { friends, requests, refreshFriends } = useFriends();
   const [theme, setTheme] = useState(workoutData.themeColor || '#A4C639');
   const activeTab = 'friends';
 
   useFocusEffect(
     useCallback(() => {
+      void refreshFriends();
       import('@/lib/workout-sync').then(({ syncWorkoutData }) => {
         syncWorkoutData().catch((err) => console.warn('フレンド同期エラー:', err));
       });
-    }, [])
+    }, [refreshFriends])
   );
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function FriendsScreen() {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.friendCard} onPress={() => router.push(`/(tabs)/friends/${item.id}` as any)}>
       {canRenderAvatarUri(item.avatar) ? (
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <Image source={{ uri: item.avatar.trim() }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatarPlaceholder, { backgroundColor: theme }]}><Ionicons name="person" size={24} color="#FFF"/></View>
       )}
