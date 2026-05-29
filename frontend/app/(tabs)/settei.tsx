@@ -111,6 +111,7 @@ export default function ProfileScreen() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [tempColor, setTempColor] = useState(workoutData.themeColor);
   const [theme, setTheme] = useState(workoutData.themeColor);
+  const [devMode, setDevMode] = useState(workoutData.isDevMode);
   const [profile, setProfile] = useState<ProfileState>(getInitialProfileState());
   const isPersistingNameRef = useRef(false);
   const profileRef = useRef<ProfileState>(getInitialProfileState());
@@ -132,8 +133,16 @@ export default function ProfileScreen() {
       setTheme(workoutData.themeColor);
       setVibeEnabled(workoutData.isVibrationEnabled);
       setProfile(getInitialProfileState());
+      setDevMode(workoutData.isDevMode);
     }, []),
   );
+
+  React.useEffect(() => {
+    const unsubscribe = workoutData.subscribeData(() => {
+      setDevMode(workoutData.isDevMode);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const helpGuideData = [
     {
@@ -569,6 +578,25 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <MenuLink icon="trophy-outline" label="実績一覧" themeColor={theme} onPress={() => setShowAchievementsModal(true)} />
+          <View style={{ borderTopWidth: 1, borderTopColor: COLORS.background }} />
+          <View style={styles.menuItem}>
+            <View style={styles.menuLeft}>
+              <Ionicons name="code-slash-outline" size={22} color={theme} />
+              <View style={{ marginLeft: 15, flex: 1 }}>
+                <Text style={[styles.menuLabel, { color: COLORS.text }]}>デベロッパーモード</Text>
+                <Text style={[styles.settingSubLabel, { marginTop: 4 }]}>ON にするとすべての実績が一時的に開放されます（ローカルのみ）</Text>
+              </View>
+            </View>
+            <Switch
+              trackColor={{ false: '#767577', true: `${theme}80` }}
+              thumbColor={devMode ? theme : '#f4f3f4'}
+              onValueChange={(value) => {
+                workoutData.setDevMode(value);
+                setDevMode(value);
+              }}
+              value={devMode}
+            />
+          </View>
           <MenuLink icon="help-circle-outline" label="ヘルプ・使い方" themeColor={theme} onPress={() => setShowHelpModal(true)} />
           <MenuLink icon="log-out-outline" label="ログアウト" color="#FF3B30" onPress={handleLogout} themeColor={theme} />
         </View>

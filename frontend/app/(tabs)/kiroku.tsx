@@ -349,16 +349,18 @@ export default function DetailedRecordScreen() {
                   <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
                     <Text style={[styles.adjustBtnText, { color: theme }]}>-</Text>
                   </TouchableOpacity>
-                  <View style={styles.dateBadge}>
+                  <View style={[styles.dateBadge, styles.inlineInput]}> 
                     <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
                   </View>
                   <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
                     <Text style={[styles.adjustBtnText, { color: theme }]}>+</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.dateBadge}>
+
+                <View style={[styles.dateBadge, styles.inlineInput]}> 
                   <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
                 </View>
+
                 <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
                   <Text style={styles.currentBtnText}>現在</Text>
                 </TouchableOpacity>
@@ -476,23 +478,32 @@ export default function DetailedRecordScreen() {
           ) : (
             <View style={styles.card}>
               <View style={styles.timerDisplayContainer}>
-                <Text style={styles.timeLeftText}>
-                  {Math.floor(swTime / 60).toString().padStart(2, '0')}:{(swTime % 60).toString().padStart(2, '0')}
-                </Text>
-                <View style={styles.controlRow}>
-                  <TouchableOpacity style={[styles.controlBtn, { backgroundColor: isRunning ? COLORS.accentBlue : theme }]} onPress={() => setIsRunning(!isRunning)}>
-                    <Text style={styles.controlBtnText}>{isRunning ? '一時停止' : '計測スタート'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.controlBtn, { backgroundColor: COLORS.grayBackground }]} onPress={() => { setIsRunning(false); setSwTime(0); }}>
-                    <Text style={[styles.controlBtnText, { color: COLORS.text }]}>リセット</Text>
-                  </TouchableOpacity>
+                  <Text style={{ fontSize: 48, fontFamily: Platform.OS === 'web' ? 'monospace' : undefined, textAlign: 'center', fontWeight: 'bold', marginVertical: 20 }}>
+                    {Math.floor(swTime / 60).toString().padStart(2, '0')}:{(swTime % 60).toString().padStart(2, '0')}
+                  </Text>
+
+                  <View style={styles.swButtonRow}>
+                    <TouchableOpacity
+                      style={[styles.swBtnPrimary, { backgroundColor: isRunning ? COLORS.accentBlue : theme }]}
+                      onPress={() => setIsRunning(!isRunning)}
+                    >
+                      <Text style={styles.swBtnPrimaryText}>{isRunning ? '一時停止' : '計測スタート'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.swBtnSecondary]}
+                      onPress={() => { setIsRunning(false); setSwTime(0); }}
+                    >
+                      <Text style={styles.swBtnSecondaryText}>リセット</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {!isRunning && swTime > 0 && (
+                    <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(swTime)}>
+                      <Text style={styles.saveBtnText}>この記録を保存する</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-                {!isRunning && swTime > 0 && (
-                  <TouchableOpacity style={[styles.inlineSaveBtn, { backgroundColor: theme }]} onPress={() => validateAndSave(swTime)}>
-                    <Text style={styles.saveBtnText}>この記録を保存する</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
             </View>
           )}
 
@@ -516,7 +527,7 @@ export default function DetailedRecordScreen() {
       </KeyboardAvoidingView>
 
       <Modal visible={showWearableModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, Platform.OS === 'web' && styles.modalOverlayWeb]}>
           <View style={styles.modalContent}>
             <Ionicons name="watch" size={48} color={theme} style={{ marginBottom: 15 }} />
             <Text style={styles.modalTitle}>スマートウォッチ連携</Text>
@@ -557,7 +568,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#DDD',
-    minWidth: 100,
     height: 45,
     justifyContent: 'center',
   },
@@ -586,6 +596,15 @@ const styles = StyleSheet.create({
   timeSection: { marginBottom: 20 },
   timePickers: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeSeparator: { fontSize: 20, fontWeight: 'bold', color: COLORS.grayText },
+  dateTimeContainer: { width: '100%' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  swButtonRow: { flexDirection: 'row', justifyContent: 'center', width: '100%' },
+  swBtnPrimary: { width: 120, borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginHorizontal: 12 },
+  swBtnPrimaryText: { color: '#fff', fontWeight: '700' },
+  swBtnSecondary: { width: 120, borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginHorizontal: 12, backgroundColor: COLORS.grayBackground },
+  swBtnSecondaryText: { color: COLORS.text, fontWeight: '700' },
+  inlineInput: { flexShrink: 1, minWidth: 100, maxWidth: 200 },
   memoInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, height: 100, textAlignVertical: 'top', color: COLORS.text, borderWidth: 1, borderColor: '#DDD' },
   card: { backgroundColor: COLORS.white, borderRadius: 20, padding: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
   stepperContainer: { marginBottom: 10 },
@@ -608,6 +627,7 @@ const styles = StyleSheet.create({
   inlineSaveBtn: { width: '100%', paddingVertical: 15, borderRadius: 12, marginTop: 25, alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: COLORS.white, borderRadius: 20, padding: 25, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
+  modalOverlayWeb: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginBottom: 10 },
   modalMessage: { fontSize: 15, color: COLORS.grayText, textAlign: 'center', marginBottom: 25, lineHeight: 22 },
   modalCloseBtn: { paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25, width: '80%', alignItems: 'center' },
