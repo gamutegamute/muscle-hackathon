@@ -45,8 +45,6 @@ const THEME_COLOR_OPTIONS = [
   '#FFD700',
   '#FF9500',
   '#34C759',
-  '#00AEEF',
-  '#FF2D55',
 ];
 
 interface StatusItemProps {
@@ -759,11 +757,6 @@ export default function ProfileScreen() {
           <View style={[styles.modalContent, { padding: 20 }]}>
             <Text style={[styles.modalTitle, { marginBottom: 20 }]}>テーマカラーを選択</Text>
 
-            <View style={styles.colorPreviewRow}>
-              <View style={[styles.colorPreviewCircle, { backgroundColor: tempColor }]} />
-              <Text style={styles.colorPreviewText}>{tempColor}</Text>
-            </View>
-
             <View style={styles.colorGrid}>
               {THEME_COLOR_OPTIONS.map((color) => {
                 const isSelected = tempColor.toLowerCase() === color.toLowerCase();
@@ -937,9 +930,6 @@ const styles = StyleSheet.create({
   menuLabel: { fontSize: 16, marginLeft: 15, fontWeight: '500', color: '#333' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: COLORS.white, borderRadius: 20, padding: 25, minHeight: 300, maxHeight: '80%', maxWidth: 480, width: '90%', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  colorPreviewRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 18, gap: 10 },
-  colorPreviewCircle: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: COLORS.white, elevation: 2 },
-  colorPreviewText: { fontSize: 14, fontWeight: '600', color: COLORS.grayText },
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
   colorSwatchButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   colorSwatch: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
