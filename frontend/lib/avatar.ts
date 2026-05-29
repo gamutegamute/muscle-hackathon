@@ -5,9 +5,14 @@ export function canRenderAvatarUri(uri?: string | null) {
     return false;
   }
 
-  if (uri.startsWith('blob:')) {
+  const normalizedUri = uri.trim();
+  if (!normalizedUri) {
+    return false;
+  }
+
+  if (normalizedUri.startsWith('blob:')) {
     return Platform.OS === 'web';
   }
 
-  return uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('file://') || uri.startsWith('data:image/');
+  return normalizedUri.startsWith('http://') || normalizedUri.startsWith('https://') || normalizedUri.startsWith('file://') || normalizedUri.startsWith('data:image/');
 }

@@ -20,7 +20,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import * as Clipboard from 'expo-clipboard';
-import ColorPicker, { Panel1, Swatches, Preview, HueSlider } from 'reanimated-color-picker';
 
 import { workoutData } from '../globalState';
 import { logoutFromFirebase } from '@/lib/auth';
@@ -37,7 +36,18 @@ const COLORS = {
   accent: '#FFD700',
 };
 
-
+const THEME_COLOR_OPTIONS = [
+  '#A4C639',
+  '#2196F3',
+  '#FF5252',
+  '#9C27B0',
+  '#37474F',
+  '#FFD700',
+  '#FF9500',
+  '#34C759',
+  '#00AEEF',
+  '#FF2D55',
+];
 
 interface StatusItemProps {
   label: string;
@@ -437,7 +447,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
             {canRenderAvatarUri(profile.avatar) ? (
-              <Image source={{ uri: profile.avatar || undefined }} style={styles.avatarImage} />
+              <Image source={{ uri: profile.avatar!.trim() }} style={styles.avatarImage} />
             ) : (
               <Ionicons name="person" size={50} color={theme} />
             )}
@@ -746,21 +756,37 @@ export default function ProfileScreen() {
       </Modal>
       <Modal visible={showColorPickerModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { padding: 20, alignItems: 'center' }]}>
+          <View style={[styles.modalContent, { padding: 20 }]}>
             <Text style={[styles.modalTitle, { marginBottom: 20 }]}>テーマカラーを選択</Text>
-            
-            <ColorPicker
-              style={{ width: '100%', gap: 20 }}
-              value={tempColor}
-              onComplete={(colors) => setTempColor(colors.hex)}
-            >
-              <Preview hideText={true} />
-              <Panel1 />
-              <HueSlider />
-              <Swatches />
-            </ColorPicker>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 30, gap: 16, width: '100%' }}>
+            <View style={styles.colorPreviewRow}>
+              <View style={[styles.colorPreviewCircle, { backgroundColor: tempColor }]} />
+              <Text style={styles.colorPreviewText}>{tempColor}</Text>
+            </View>
+
+            <View style={styles.colorGrid}>
+              {THEME_COLOR_OPTIONS.map((color) => {
+                const isSelected = tempColor.toLowerCase() === color.toLowerCase();
+
+                return (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorSwatchButton,
+                      { borderColor: isSelected ? color : COLORS.divider },
+                    ]}
+                    onPress={() => setTempColor(color)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.colorSwatch, { backgroundColor: color }]}>
+                      {isSelected ? <Ionicons name="checkmark" size={24} color={COLORS.white} /> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24, gap: 16, width: '100%' }}>
               <TouchableOpacity
                 style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' }}
                 onPress={() => setShowColorPickerModal(false)}
@@ -911,6 +937,12 @@ const styles = StyleSheet.create({
   menuLabel: { fontSize: 16, marginLeft: 15, fontWeight: '500', color: '#333' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: COLORS.white, borderRadius: 20, padding: 25, minHeight: 300, maxHeight: '80%', maxWidth: 480, width: '90%', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  colorPreviewRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 18, gap: 10 },
+  colorPreviewCircle: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: COLORS.white, elevation: 2 },
+  colorPreviewText: { fontSize: 14, fontWeight: '600', color: COLORS.grayText },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+  colorSwatchButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  colorSwatch: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text },
   badgeItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.background },

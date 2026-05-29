@@ -20,7 +20,10 @@ export interface Friend {
   rank: string;
   consecutiveDays: number;
   totalTime: number;
+  dailyTotalTime: number;
   weeklyTotalTime: number;
+  monthlyTotalTime: number;
+  yearlyTotalTime: number;
   achievementCount: number;
   recentActivity: string[];
 }
@@ -45,7 +48,10 @@ function toFriend(friend: ApiFriend): Friend {
     rank: friend.rank ?? '',
     consecutiveDays: friend.consecutiveDays ?? 0,
     totalTime: friend.totalTime ?? 0,
+    dailyTotalTime: friend.dailyTotalTime ?? 0,
     weeklyTotalTime: friend.weeklyTotalTime ?? 0,
+    monthlyTotalTime: friend.monthlyTotalTime ?? 0,
+    yearlyTotalTime: friend.yearlyTotalTime ?? 0,
     achievementCount: friend.achievementCount ?? 0,
     recentActivity: friend.recentActivity ?? [],
   };
@@ -167,7 +173,7 @@ export function useFriends() {
 
   const getRankingByTotalTime = useCallback(() => {
     return [...friends].sort(
-      (a, b) => (b.weeklyTotalTime || b.totalTime) - (a.weeklyTotalTime || a.totalTime),
+      (a, b) => b.totalTime - a.totalTime,
     );
   }, [friends]);
 

@@ -7,6 +7,8 @@ import { useFriends } from '../../../hooks/useFriends';
 import { workoutData } from '../../globalState';
 import { canRenderAvatarUri } from '../../../lib/avatar';
 
+type RankingPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
 const COLORS = {
   background: '#F5F5F5',
   white: '#FFFFFF',
@@ -17,10 +19,65 @@ const COLORS = {
   bronze: '#CD7F32',
 };
 
+const PERIOD_TABS: { key: RankingPeriod; label: string }[] = [
+  { key: 'daily', label: '日間' },
+  { key: 'weekly', label: '週間' },
+  { key: 'monthly', label: '月間' },
+  { key: 'yearly', label: '年間' },
+];
+
+function getLocalDateParts() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return {
+    today: `${year}-${month}-${day}`,
+    monthPrefix: `${year}-${month}`,
+    yearPrefix: String(year),
+    weekStartMs: new Date(year, now.getMonth(), now.getDate() - 6).getTime(),
+    todayEndMs: new Date(year, now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime(),
+  };
+}
+
+function getSelfPeriodMinutes(period: RankingPeriod) {
+  const { today, monthPrefix, yearPrefix, weekStartMs, todayEndMs } = getLocalDateParts();
+
+  return workoutData.records.reduce((total, record) => {
+    const recordDate = record.date?.slice(0, 10);
+    if (!recordDate) {
+      return total;
+    }
+
+    if (period === 'daily' && recordDate !== today) {
+      return total;
+    }
+
+    if (period === 'weekly') {
+      const recordTime = new Date(`${recordDate}T00:00:00`).getTime();
+      if (recordTime < weekStartMs || recordTime > todayEndMs) {
+        return total;
+      }
+    }
+
+    if (period === 'monthly' && !recordDate.startsWith(monthPrefix)) {
+      return total;
+    }
+
+    if (period === 'yearly' && !recordDate.startsWith(yearPrefix)) {
+      return total;
+    }
+
+    return total + Number(record.minutes || 0);
+  }, 0);
+}
+
 export default function RankingScreen() {
   const router = useRouter();
-  const { getRankingByTotalTime } = useFriends();
+  const { friends } = useFriends();
   const [theme, setTheme] = useState(workoutData.themeColor || '#A4C639');
+  const [period, setPeriod] = useState<RankingPeriod>('weekly');
   const [, setDataVersion] = useState(0);
 
   useEffect(() => {
@@ -33,7 +90,6 @@ export default function RankingScreen() {
     return () => unsubscribe();
   }, []);
 
-  const friendRanking = getRankingByTotalTime();
   const currentUserId = workoutData.getUserId();
   const shouldShowCurrentUser = currentUserId && !workoutData.isGuestUser();
   const currentUser = shouldShowCurrentUser
@@ -45,15 +101,31 @@ export default function RankingScreen() {
         rank: workoutData.equippedBadge,
         consecutiveDays: workoutData.streakDays,
         totalTime: workoutData.totalMinutes,
-        weeklyTotalTime: (workoutData as any).weeklyTotalMinutes ?? workoutData.totalMinutes,
+        dailyTotalTime: getSelfPeriodMinutes('daily'),
+        weeklyTotalTime: getSelfPeriodMinutes('weekly'),
+        monthlyTotalTime: getSelfPeriodMinutes('monthly'),
+        yearlyTotalTime: getSelfPeriodMinutes('yearly'),
         achievementCount: workoutData.unlockedAchievements.length,
         recentActivity: [],
         isSelf: true,
       }
     : null;
-  const ranking = (currentUser ? [currentUser, ...friendRanking] : friendRanking)
+  const getRankingMinutes = (item: {
+    dailyTotalTime?: number;
+    weeklyTotalTime?: number;
+    monthlyTotalTime?: number;
+    yearlyTotalTime?: number;
+    totalTime: number;
+  }) => {
+    if (period === 'daily') return Number(item.dailyTotalTime ?? 0);
+    if (period === 'weekly') return Number(item.weeklyTotalTime ?? 0);
+    if (period === 'monthly') return Number(item.monthlyTotalTime ?? 0);
+    return Number(item.yearlyTotalTime ?? item.totalTime ?? 0);
+  };
+
+  const ranking = (currentUser ? [currentUser, ...friends] : friends)
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
-    .sort((a, b) => b.totalTime - a.totalTime);
+    .sort((a, b) => getRankingMinutes(b) - getRankingMinutes(a));
 
   const getRankColor = (index: number) => {
     if (index === 0) return COLORS.gold;
@@ -83,7 +155,7 @@ export default function RankingScreen() {
           <Text style={styles.name}>{item.name}</Text>
           {item.isSelf && <Text style={[styles.selfLabel, { color: theme }]}>あなた</Text>}
         </View>
-        <Text style={styles.time}>{Math.floor(item.weeklyTotalTime ?? item.totalTime)}分</Text>
+        <Text style={styles.time}>{Math.floor(getRankingMinutes(item))}分</Text>
       </View>
     </TouchableOpacity>
   );
@@ -99,6 +171,22 @@ export default function RankingScreen() {
           )
         }} 
       />
+      <View style={styles.segmentedControl}>
+        {PERIOD_TABS.map((tab) => {
+          const isActive = period === tab.key;
+
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.segmentButton, isActive && styles.segmentButtonActive]}
+              onPress={() => setPeriod(tab.key)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.segmentText, isActive && { color: theme }]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
       <FlatList
         data={ranking}
         keyExtractor={(item) => item.id}
@@ -111,6 +199,30 @@ export default function RankingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5E5',
+    borderRadius: 16,
+    padding: 4,
+    marginHorizontal: 15,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  segmentButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentButtonActive: {
+    backgroundColor: COLORS.white,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.grayText,
+  },
   list: { padding: 15, paddingTop: 8 },
   card: {
     flexDirection: 'row',

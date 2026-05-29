@@ -96,17 +96,34 @@ def build_records_summary(
 
     today_str = datetime.now(JST).date().isoformat()
     today_total_minutes = 0.0
+    daily_total_minutes = 0.0
+    weekly_total_minutes = 0.0
 
-    week_start = (datetime.now(JST).date() - timedelta(days=6)).isoformat()
+    current_date = datetime.now(JST).date()
+    week_start = (current_date - timedelta(days=6)).isoformat()
+    month_prefix = current_date.strftime("%Y-%m")
+    year_prefix = current_date.strftime("%Y")
+    monthly_total_minutes = 0.0
+    yearly_total_minutes = 0.0
 
     for record in formatted:
         date = record.get("date")
         if date:
+            record_minutes = float(record.get("minutes") or 0)
             increment = 1 if daily_value_key == "count" else float(record.get("minutes") or 0)
             daily_map[date] += increment
 
+            if date == today_str:
+                daily_total_minutes += record_minutes
+
             if week_start <= date <= today_str:
-                weekly_total_minutes += float(record.get("minutes") or 0)
+                weekly_total_minutes += record_minutes
+
+            if date.startswith(month_prefix):
+                monthly_total_minutes += record_minutes
+
+            if date.startswith(year_prefix):
+                yearly_total_minutes += record_minutes
 
         menu_name = record.get("menuName")
         if menu_name:
@@ -130,7 +147,10 @@ def build_records_summary(
     return {
         "userId": user_id,
         "totalMinutes": round(sum(record.get("minutes", 0) or 0 for record in formatted), 1),
+        "dailyTotalMinutes": round(daily_total_minutes, 1),
         "weeklyTotalMinutes": round(weekly_total_minutes, 1),
+        "monthlyTotalMinutes": round(monthly_total_minutes, 1),
+        "yearlyTotalMinutes": round(yearly_total_minutes, 1),
         "totalRecords": len(formatted),
         "todayRecords": sum(1 for record in formatted if record.get("date") == today_str),
         "todayTotalMinutes": round(today_total_minutes, 1),
