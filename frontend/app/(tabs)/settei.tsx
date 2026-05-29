@@ -437,7 +437,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
             {canRenderAvatarUri(profile.avatar) ? (
-              <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
+              <Image source={{ uri: profile.avatar || undefined }} style={styles.avatarImage} />
             ) : (
               <Ionicons name="person" size={50} color={theme} />
             )}
