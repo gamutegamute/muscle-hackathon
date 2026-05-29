@@ -84,7 +84,23 @@ const FastStepper = ({ label, value, onUpdate, min = 0, max = 99, unit = '' }: a
 
 const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme }: any) => {
   const [pickerWidth, setPickerWidth] = useState(0);
+  const lastSelectedRef = useRef(currentVal);
   const sidePadding = pickerWidth ? (pickerWidth - ITEM_WIDTH) / 2 : 0;
+
+  useEffect(() => {
+    lastSelectedRef.current = currentVal;
+  }, [currentVal]);
+
+  const selectNearestValue = (offsetX: number) => {
+    const index = Math.round(offsetX / ITEM_WIDTH);
+    if (index < 0 || index >= data.length) return;
+
+    const nextValue = data[index];
+    if (nextValue === lastSelectedRef.current) return;
+
+    lastSelectedRef.current = nextValue;
+    onSelect(nextValue);
+  };
 
   return (
     <View style={styles.pickerWrapper} onLayout={(e) => setPickerWidth(e.nativeEvent.layout.width)}>
@@ -101,10 +117,10 @@ const WorkoutPicker = React.memo(({ data, currentVal, onSelect, pickerRef, theme
           snapToAlignment="start"
           initialScrollIndex={currentVal}
           getItemLayout={(_, index) => ({ length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index })}
-          onMomentumScrollEnd={(e) => {
-            const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-            if (index >= 0 && index < data.length) onSelect(data[index]);
-          }}
+          scrollEventThrottle={16}
+          onScroll={(e) => selectNearestValue(e.nativeEvent.contentOffset.x)}
+          onScrollEndDrag={(e) => selectNearestValue(e.nativeEvent.contentOffset.x)}
+          onMomentumScrollEnd={(e) => selectNearestValue(e.nativeEvent.contentOffset.x)}
           contentContainerStyle={{ paddingHorizontal: sidePadding }}
           renderItem={({ item }) => (
             <View style={styles.numberItem}>
@@ -350,12 +366,12 @@ export default function DetailedRecordScreen() {
         >
           {activeTab === 'input' && (
             <>
-              <View style={styles.dateTimeRow}>
+              <View style={styles.dateTimeGroup}>
                 <View style={styles.dateControlGroup}>
                   <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(-1)}>
                     <Text style={[styles.adjustBtnText, { color: theme }]}>-</Text>
                   </TouchableOpacity>
-                  <View style={[styles.dateBadge, styles.inlineInput]}> 
+                  <View style={[styles.dateBadge, styles.dateInput]}> 
                     <TextInput style={styles.dateText} value={dateStr} onChangeText={setDateStr} keyboardType="numbers-and-punctuation" />
                   </View>
                   <TouchableOpacity style={[styles.adjustBtn, { borderColor: theme }]} onPress={() => adjustDate(1)}>
@@ -363,13 +379,15 @@ export default function DetailedRecordScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={[styles.dateBadge, styles.inlineInput]}> 
-                  <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
-                </View>
+                <View style={styles.timeControlRow}>
+                  <View style={[styles.dateBadge, styles.timeInput]}> 
+                    <TextInput style={styles.dateText} value={timeStr} onChangeText={setTimeStr} keyboardType="numbers-and-punctuation" />
+                  </View>
 
-                <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
-                  <Text style={styles.currentBtnText}>現在</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={[styles.currentBtn, { backgroundColor: theme }]} onPress={handleSetCurrentTime}>
+                    <Text style={styles.currentBtnText}>現在</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity 
@@ -571,8 +589,9 @@ const styles = StyleSheet.create({
   saveBtn: { paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
   saveBtnText: { color: 'white', fontWeight: 'bold' },
   scrollContent: { width: '100%', maxWidth: '100%', paddingHorizontal: 20, paddingBottom: 40 },
-  dateTimeRow: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 15, alignItems: 'center', justifyContent: 'space-between' },
-  dateControlGroup: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
+  dateTimeGroup: { width: '100%', gap: 10, marginBottom: 15 },
+  dateControlGroup: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timeControlRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10 },
   dateBadge: {
     backgroundColor: COLORS.white,
     paddingVertical: 10,
@@ -583,10 +602,10 @@ const styles = StyleSheet.create({
     height: 45,
     justifyContent: 'center',
   },
-  dateText: { fontSize: 13, color: COLORS.text, padding: 0, textAlign: 'center', height: 20 },
+  dateText: { fontSize: 16, color: COLORS.text, padding: 0, textAlign: 'center', height: 24 },
   adjustBtn: { backgroundColor: COLORS.white, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   adjustBtnText: { fontSize: 18, fontWeight: 'bold' },
-  currentBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
+  currentBtn: { width: 64, height: 45, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   currentBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
   wearableBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingVertical: 12, marginBottom: 15, backgroundColor: COLORS.white },
   wearableBtnText: { fontSize: 14, fontWeight: 'bold' },
@@ -618,6 +637,8 @@ const styles = StyleSheet.create({
   swBtnPrimaryText: { color: '#fff', fontWeight: '700' },
   swBtnSecondary: { width: 120, borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginHorizontal: 12, backgroundColor: COLORS.grayBackground },
   swBtnSecondaryText: { color: COLORS.text, fontWeight: '700' },
+  dateInput: { flex: 1, minWidth: 0 },
+  timeInput: { flex: 1, minWidth: 0 },
   inlineInput: { flexShrink: 1, minWidth: 88, maxWidth: 200 },
   memoInput: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, height: 100, textAlignVertical: 'top', color: COLORS.text, borderWidth: 1, borderColor: '#DDD' },
   card: { backgroundColor: COLORS.white, borderRadius: 20, padding: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
