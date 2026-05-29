@@ -1,50 +1,62 @@
-# Welcome to your Expo app 👋
+# muscloop frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo / React Native / Expo Router / TypeScriptで作られたmuscloopのフロントエンドです。Expo WebとしてVercelにも公開しています。
 
-## Get started
+## 起動
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```powershell
+cd C:\dev\muscle-hackathon\frontend
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Webビルド
 
-## Learn more
+```powershell
+npx.cmd expo export --platform web
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Vercel設定:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Root Directory: `frontend`
+- Build Command: `npx expo export --platform web`
+- Output Directory: `dist`
+- Install Command: `npm install`
 
-## Join the community
+## API接続
 
-Join our community of developers creating universal apps.
+ローカルBackend:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```env
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+```
+
+実機からローカルBackendを見る場合:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000
+```
+
+AWS Backend:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com
+```
+
+Web公開版ではMixed Contentを避けるため、HTTPS上でAPI URLがHTTPの場合は `/api` 経由で呼びます。Vercel rewritesは `frontend/vercel.json` にあります。
+
+## 主な画面
+
+- `app/index.tsx`: ログイン、新規登録、ゲストログイン、パスワード再設定
+- `app/(tabs)/home.tsx`: ホーム
+- `app/(tabs)/kiroku.tsx`: 記録
+- `app/(tabs)/ai.tsx`: AIトレーナー
+- `app/(tabs)/friends/*`: フレンド、申請、検索、ランキング、詳細
+- `app/(tabs)/settei.tsx`: 設定
+- `app/profile.tsx`: プロフィール
+
+## 注意
+
+- WebではHealthKit、ネイティブ通知、SecureStore系、一部画像URI、自動音声再生に制限があります。
+- `blob:` 画像URIはNativeで表示しないようにしています。安全に表示できるURI判定は `lib/avatar.ts` を見てください。
+- 画像共有の本格対応はFirebase Storageに寄せる予定です。

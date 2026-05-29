@@ -1,236 +1,197 @@
 # muscloop
 
-muscloop は、筋トレを続けたい人のための継続支援アプリです。  
-記録、AI 相談、実績、通知をひとつのアプリにまとめることで、筋トレ初心者でも迷わず続けやすい体験を目指しました。
+muscloopは、筋トレを「考える」「記録する」「続ける」まで支援するトレーニング継続アプリです。
+AI相談、トレーニング記録、実績、フレンド、ランキングをひとつにまとめ、初心者でも迷わず継続できる体験を目指しています。
 
-2026 年 3 月に開催された `SysHack2026` にて開発し、**サイバーエージェント賞** を受賞しました。
+技育博の展示では、Web版を入口にしつつ、Expo/React Nativeでスマホアプリとしても動く構成を説明できます。
 
-## 受賞実績
+## 公開URL
 
-- `SysHack2026 サイバーエージェント賞`
+- Web: https://muscle-hackathon.vercel.app/
+- Backend: http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com
+- Backend health: http://muscloop-backend-alb-161585801.ap-northeast-1.elb.amazonaws.com/health
 
-審査では、次のような点を評価していただきました。
+Vercel上のHTTPSページからHTTPのALBを直接叩くとMixed Contentになるため、Web版ではVercelのrewritesで `/api/*` 経由にしています。
 
-- デザインや機能、細かい部分まで含めた UI / UX の完成度
-- 問題提起から解決策までの流れがわかりやすいこと
-- AI とやり取りしながらメニューを決められる体験
-- 継続を支える通知や実績など、習慣化を意識した設計
+## できること
 
-## 背景
-
-筋トレは始めても継続できずに終わってしまうことが多く、チーム内でも同じ悩みがありました。  
-そこで muscloop では、単なる記録アプリではなく、**継続のハードルを下げること** に焦点を当てました。
-
-特に次の 3 点を重視しています。
-
-- 何をすればいいか迷わないこと
-- 記録の手間が少ないこと
-- 続けたくなる仕組みがあること
-
-## 主な機能
-
-- メール / パスワード認証
+- メール/パスワード認証
 - ゲスト利用
+- プロフィール登録
 - 筋トレ記録
-- タイマー / ストップウォッチによる記録補助
-- ホーム画面での累計時間、連続記録、カレンダー表示
-- AI 相談によるメニュー提案
-- 実績一覧
-- テーマカラー変更
-- 通知設定
-- プロフィール編集
+- タイマー/ストップウォッチ記録
+- 今日の記録、累計時間、連続日数、カレンダー表示
+- 実績/バッジ
+- AIトレーナー相談
+- フレンド検索、申請、承認、一覧、詳細
+- フレンドランキング
+- Expo Push Notifications
+- Web公開とAWS上のFastAPIバックエンド連携
 
-## 特に見せたいポイント
+## 技術構成
 
-### 1. AI 相談から記録までを自然につなげたこと
+### Frontend
 
-AI に相談してメニューを決め、そのまま記録画面へつなげられるようにしています。  
-「考える」から「実行する」までの流れを分断しないことで、行動に移しやすい設計を意識しました。
-
-### 2. 継続を支える UI / UX
-
-ホーム画面では、累計時間、連続記録、カレンダー、AI からのメッセージをまとめて確認できます。  
-また、実績やテーマカラー変更など、使い続けたくなる体験も取り入れています。
-
-### 3. 通知を含めた継続支援の導線
-
-Expo Push Token を保存し、FastAPI 側からリマインド通知を送れる構成にしています。  
-日々の行動を思い出してもらうための土台として実装しました。
-
-## 画面イメージ
-
-### ホーム
-
-累計時間、連続記録、カレンダー、AI メッセージをひとつの画面で確認できます。
-
-![ホーム画面](docs/screenshots/home.png)
-
-### 記録
-
-手動入力だけでなく、タイマーやストップウォッチを使った記録にも対応しています。
-
-![記録画面](docs/screenshots/record.png)
-
-### 実績一覧
-
-取得済みの実績と未取得の実績を一覧で確認できます。
-
-![実績一覧画面](docs/screenshots/achievements.png)
-
-### グラフ
-
-トレーニング状況を可視化し、過去の記録一覧にも移動できます。
-
-![グラフ画面](docs/screenshots/graph.jpg)
-
-### 設定
-
-プロフィール、通知、テーマカラー変更など、継続しやすい体験を支える設定をまとめています。
-
-![設定画面](docs/screenshots/settings.png)
-
-## 技術スタック
-
-### フロントエンド
-
-- React Native
 - Expo
+- React Native
+- React Native Web
 - Expo Router
 - TypeScript
+- Firebase Authentication
+- Expo Push Notifications
 
-### バックエンド
+### Backend
 
 - FastAPI
 - Python
+- Firebase Admin SDK
+- Firestore
+- Gemini API
+- Docker
 
-### データ / 認証 / 通知
+### Hosting / Infrastructure
 
-- Firebase Firestore
-- Firebase Authentication
-- Expo Push Notifications
-- APScheduler
+- Vercel: Web frontend
+- AWS ECS/Fargate: Backend container
+- Amazon ECR: Docker image registry
+- Application Load Balancer: Backend public entrypoint
+- CloudWatch Logs: Backend logs
+- AWS Secrets Manager: Gemini API key and Firebase service account
 
 ## システム構成
 
 ```text
-React Native (Expo)
-  ↓ API リクエスト
-FastAPI
-  ↓
-Firebase Firestore / Firebase Authentication
+User
+  |
+  | Web / iOS / Android
+  v
+Expo React Native app
+  |
+  | HTTPS on Vercel: /api/*
+  | Native/local: EXPO_PUBLIC_API_BASE_URL
+  v
+FastAPI backend on ECS Fargate
+  |
+  +-- Firebase Authentication
+  +-- Firestore
+  +-- Gemini API
+  +-- Expo Push Notifications
 ```
 
-- フロントエンドから FastAPI に API リクエストを送り、ユーザープロフィールや記録を保存・取得
-- 認証は Firebase Authentication を利用
-- 通知用の Expo Push Token を保存し、バックエンドからリマインド通知を送信
+## デモで見せやすい流れ
 
-## 開発体制
+1. Web版を開く
+2. ゲストで入る、または登録済みユーザーでログインする
+3. AIトレーナーに「脚トレしたい」「いい腕立ての方法ある？」などを相談する
+4. 記録画面でトレーニングを保存する
+5. ホームで今日の記録、累計時間、連続日数を見る
+6. フレンド画面で検索、申請、ランキングを見る
+7. 実績やバッジで継続支援の仕組みを説明する
 
-- 開発期間: 2026/03/17 - 2026/03/31
-- ハッカソン: `SysHack2026`
-- チーム人数: 5 名
-- 開発形態: チーム開発
+より詳しい当日用の説明は [docs/DEMO_DAY_GUIDE.md](docs/DEMO_DAY_GUIDE.md) にまとめています。
 
-## チーム体制
+## ローカル開発
 
-5 人チームで開発を進め、それぞれがデザイン、フロントエンド、バックエンド、通知、グラフ表示などを分担しながら実装しました。  
-短期間のハッカソンだったため、各機能を個別に作るだけでなく、最後にひとつのアプリとして成立させることを重視して進めました。
+作業する本命リポジトリ:
 
-## 工夫した点
-
-### 技術面
-
-- まずダミーデータで AI 導線を成立させ、あとから本実装につなげられるようにした
-- 画面ごとに個別で処理するのではなく、フロントとバックのデータの流れをそろえて反映のずれを減らした
-
-### UX 面
-
-- 操作回数をできるだけ減らし、思考コストを下げることを意識した
-- 記録、AI 相談、実績、通知をばらばらにせず、一連の習慣化体験としてまとめた
-
-### チーム開発面
-
-- 各メンバーの進捗や詰まりを把握し、期間内に完成へ近づけるように役割分担を調整した
-- 似た作業が重なってコンフリクトしないよう、担当範囲を整理し直した
-
-## 苦労したこと
-
-### 1. コンフリクト対応
-
-複数人が近い箇所を同時に触る場面があり、コンフリクトの解消に苦労しました。  
-そこで、担当範囲をできるだけ明確に分け、作業の重なりを減らしました。
-
-### 2. 環境差分による起動トラブル
-
-メンバーごとに開発環境が異なり、同じ手順でも起動できないことがありました。  
-そのため、接続や起動確認を細かく行い、チーム全体で動かせる状態に近づけることを意識しました。
-
-### 3. 文字化けや表示崩れ
-
-途中で文字化けや画面上の不整合が発生し、起動や表示に影響が出ることがありました。  
-見た目だけ先に直すのではなく、まず動作に必要な部分から安定させるように進めました。
-
-## 今後の改善
-
-- AI 機能の精度向上
-- AI 画像認識機能の追加
-- Android を含む複数環境での安定動作確認
-- 通知や認証周りの本番運用を見据えた改善
-- アーキテクチャや設計面の整理
-
-## セットアップ
-
-### 1. 必要なもの
-
-- Git
-- Node.js / npm
-- Python 3.x
-- Firebase の `serviceAccountKey.json`
-
-### 2. リポジトリの取得
-
-```bash
-git clone https://github.com/gamutegamute/muscle-hackathon.git
-cd muscle-hackathon
+```powershell
+cd C:\dev\muscle-hackathon
 ```
 
-### 3. バックエンド
+OneDrive側の古いクローンと間違えないようにしてください。
 
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
+### Backend
+
+```powershell
+cd C:\dev\muscle-hackathon\backend
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
-```
-
-`backend/.env` に `GEMINI_API_KEY` を設定し、`backend/serviceAccountKey.json` を配置してください。
-
-起動:
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-### 4. フロントエンド
+必要なもの:
 
-```bash
-cd frontend
-copy .env.example .env
+- `backend/.env`
+- `backend/serviceAccountKey.json`
+- `GEMINI_API_KEY`
+
+確認:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+### Frontend
+
+```powershell
+cd C:\dev\muscle-hackathon\frontend
 npm install
 npx expo start
 ```
 
-`frontend/.env` の `EXPO_PUBLIC_API_BASE_URL` は、実機検証時は PC のローカル IP に合わせて変更してください。
+Webビルド確認:
 
-例:
-
-```env
-EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:8000
+```powershell
+npx.cmd expo export --platform web
 ```
 
-## 補足
+## 環境変数
 
-- Google ログインは今後対応予定です
-- 通知は基盤実装済みで、development build 環境での安定確認を予定しています
-- 本リポジトリは継続開発中です
+Frontendは `frontend/.env.example`、Backendは `backend/.env.example` を参照してください。
+FirebaseやGeminiのキーはGitに含めません。
+
+主なFrontend環境変数:
+
+- `EXPO_PUBLIC_API_BASE_URL`
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
+- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
+- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- `EXPO_PUBLIC_EAS_PROJECT_ID`
+
+主なBackend環境変数:
+
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `GEMINI_FALLBACK_MODEL`
+- `ADMIN_API_TOKEN`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+
+## よく使う確認コマンド
+
+```powershell
+cd C:\dev\muscle-hackathon
+git status --short --branch
+```
+
+```powershell
+cd C:\dev\muscle-hackathon\frontend
+npx.cmd eslint app\index.tsx --no-cache
+npx.cmd expo export --platform web
+```
+
+```powershell
+cd C:\dev\muscle-hackathon\backend
+.\venv\Scripts\python.exe -m compileall app
+```
+
+## ドキュメント
+
+- [docs/DEMO_DAY_GUIDE.md](docs/DEMO_DAY_GUIDE.md): 技育博本番で説明する内容、デモ手順、想定質問
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): Vercel/AWS/Firebase/デプロイ/運用メモ
+- [QA_CHECKLIST.md](QA_CHECKLIST.md): 本番前の動作確認チェックリスト
+- [SETUP_MANUAL.md](SETUP_MANUAL.md): ローカルセットアップ手順
+- [backend/DOCKER.md](backend/DOCKER.md): Backend Docker起動手順
+
+## 注意点
+
+- GitHubにpushするとVercelのWeb版は自動デプロイされます。
+- Backend変更はGitHub pushだけではAWSに反映されません。Docker build/pushとECS redeployが必要です。
+- WebではHealthKit、ネイティブ通知、SecureStore系、一部画像URI、自動音声再生に制限があります。
+- 現在のプロフィール画像共有は暫定対応です。本格対応はFirebase Storageに画像を保存し、FirestoreにはURLだけ保存する方針です。
