@@ -12,6 +12,8 @@ AI相談、トレーニング記録、実績、通知、フレンド、ランキ
 - SysHack2026      **サイバーエージェント賞 受賞**
 - 技育博2026vol.1   **出展**　　　　         
 
+## 工夫した点
+とことん見やすさを追求し、ユーザーに飽きを与えないためにこだわり抜いたUI/UX。加えて、筋トレをストレスなく行えるよう、インターバルとセット数を設定できるタイマーを作成。筋トレが続かないのは何が原因か、既存の筋トレアプリに足りないのは何か、ユーザーの視点に立って研究し、「継続」に徹底フォーカスしたアプリになっています。
 
 ## 主な機能
 
@@ -79,14 +81,6 @@ FastAPI backend on ECS Fargate
   +-- Firebase Storage
   +-- Gemini API
   +-- Expo Push Notifications
-```
-
-## ローカル開発
-
-作業する本命リポジトリ:
-
-```powershell
-cd C:\dev\muscle-hackathon
 ```
 
 ### Backend
@@ -169,3 +163,16 @@ cd C:\dev\muscle-hackathon\backend
 - GitHubにpushするとVercelのWeb版は自動デプロイされます。
 - Backend変更はGitHub pushだけではAWSに反映されません。Docker build/pushとECS redeployが必要です。
 - WebではHealthKit、ネイティブ通知、SecureStore系、一部画像URI、自動音声再生に制限があります。
+
+## 今後の課題
+- マネタイズの方法の模索
+- ターゲット層の明確化
+- 同業他社のアプリとの差別化
+- 食事管理機能の追加
+- 目標設定システムの導入
+- 体重を記録し、その推移をグラフ化するシステムの導入
+- 記録のメモの改善
+- スマートウォッチとの連携
+- HealthKitと連携した本格的なヘルスケアデータ取得
+- 歩数測定機能の追加
+- チャット機能の追加
