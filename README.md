@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/muscloop-hero.png" width="100%" alt="muscloop" />
+  <img src="frontend/assets/images/muscloop-hero.png" width="100%" alt="muscloop" />
 </p>
 
 # muscloop
