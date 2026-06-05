@@ -4,41 +4,124 @@
 
 # muscloop
 
-muscloopは、筋トレを「考える」「記録する」「続ける」まで支援するトレーニング継続アプリです。
-AI相談、トレーニング記録、実績、通知、フレンド、ランキングなどの機能を搭載し、初心者でも迷わず継続できる体験を目指しています。
+**筋トレを「考える」「記録する」「続ける」まで支援する、トレーニング継続アプリ。**
 
+muscloopは、筋トレを始めても続かない人のために、AI相談、トレーニング記録、実績、通知、フレンド、ランキングをひとつにつないだアプリです。  
+何をすればよいか迷う時間と記録の手間を減らし、仲間や達成感によって続けたくなる体験を目指しています。
 
-## 受賞/出展歴
-- SysHack2026      **サイバーエージェント賞 受賞**
-- 技育博2026vol.1   **出展**　　　　         
+## 受賞・出展
 
-## 工夫した点
-視覚的な見やすさを追求し、飽きを感じさせないUI/UXデザインをはじめ、トレーニング中のストレスを徹底的に排除するためにインターバルとセット数を緻密に管理できるタイマー機能を独自に実装。さらに、フレンド内ランキングや自動プッシュ通知による習慣化の仕組みを組み込むことで、ユーザーの「三日坊主」を防止します。単なる記録ツールに留まらず、行動経済学的なアプローチから「継続」に徹底フォーカスしたプロダクトになっています。
+- **SysHack2026 サイバーエージェント賞**
+- **技育博2026 vol.1 出展**
+
+## 解決したい課題
+
+筋トレは、始めることよりも続けることが難しい活動です。チーム内でも、次のような理由で継続できない経験がありました。
+
+- 自分に合うメニューが分からない
+- 毎回の記録が面倒
+- 一人ではモチベーションを保ちにくい
+- 成長や積み重ねを実感しにくい
+
+muscloopでは、単なる記録ツールではなく、**行動を始めやすくし、継続を後押しする仕組み**に焦点を当てています。
 
 ## 主な機能
 
-- メール/パスワード認証
-- ゲスト利用
-- プロフィール登録
-- 筋トレ記録
-- タイマー/ストップウォッチ記録
-- プッシュ通知
-- 今日の記録、累計時間、連続日数、カレンダー表示
-- 実績/バッジ
-- AIトレーナー相談
-- フレンド検索、申請、承認、一覧、詳細
-- フレンドランキング
-- テーマカラー変更
-- Expo Push Notifications
-- Web公開とAWS上のFastAPIバックエンド連携
+| 機能 | 内容 |
+| --- | --- |
+| AIトレーナー相談 | 目的や悩みに応じたアドバイスを受け、そのまま記録につなげられます |
+| トレーニング記録 | 手動入力、タイマー、ストップウォッチから記録できます |
+| 継続の可視化 | 累計時間、連続日数、カレンダー、実績・バッジを確認できます |
+| フレンド・ランキング | フレンド申請、詳細表示、期間別ランキングで仲間と継続できます |
+| プロフィール | Firebase Storageを利用し、プロフィール画像を端末間で共有できます |
+| 認証・ゲスト利用 | 登録ユーザーと、すぐ試せるゲスト利用の両方に対応しています |
+| カスタマイズ・通知 | テーマカラー変更とExpo Push Notificationsに対応しています |
 
-## 技術構成
+## 画面イメージ
+
+| ホーム | 記録 | 実績 |
+| --- | --- | --- |
+| ![ホーム画面](docs/screenshots/home.png) | ![記録画面](docs/screenshots/record.png) | ![実績一覧画面](docs/screenshots/achievements.png) |
+
+| グラフ | 設定 |
+| --- | --- |
+| ![グラフ画面](docs/screenshots/graph.jpg) | ![設定画面](docs/screenshots/settings.png) |
+
+## 特に工夫した点
+
+### AI相談を「回答」で終わらせない
+
+AIに相談してメニューを決め、その内容を記録画面へ引き継げるようにしました。  
+相談、実行、記録を分断せず、ユーザーが次の行動へ移りやすい導線を意識しています。
+
+### 継続を複数の角度から支える
+
+実績や連続記録による達成感、フレンドやランキングによる仲間とのつながり、通知によるリマインドを組み合わせています。  
+競争だけに偏らず、自分の積み重ねも楽しめる設計を目指しました。
+
+### Webとネイティブの違いを吸収する
+
+Expo / React Nativeを利用し、Web・iOS・Androidで共通化できる部分を増やしました。  
+一方で、画像URI、通知、HealthKitなどプラットフォームごとの差がある機能は、安全に分岐して扱っています。
+
+## 技術的な挑戦
+
+- Firebase ID tokenをFastAPIで検証し、認証済みユーザーのUIDを基準にデータを扱う構成
+- Firebase Storageに画像を保存し、Firestoreには共有可能なURLのみを保存
+- HTTPSのVercelからHTTPのALBへアクセスする際のMixed Content問題をVercel rewritesで回避
+- ゲスト利用と登録ユーザーの両方に対応したデータ同期
+- Webとネイティブで異なる画像URIやUI挙動への対応
+- Docker化したFastAPIをAWS ECS/Fargateへデプロイし、CloudWatchで監視
+
+## 実運用で得られた結果
+
+技育博2026 vol.1では、来場者や企業の方に実際に操作していただきました。
+
+- 約 **3,500件** のユーザー操作由来APIリクエストを処理
+- バックエンドの **5xxエラーは0件**
+- ECS CPU使用率は最大約 **11%**
+- ECSメモリ使用率は約 **14%**
+- AI相談APIは当日 **35件** の正常応答を確認
+
+展示規模では安定して動作しました。一方、より大規模な利用では、AI APIのレート制限、ランキング集計、オートスケーリングなどが今後の改善点です。
+
+## システム構成
+
+```text
+Web user
+  |
+  v
+Vercel / Expo Web
+  |
+  | /api/* rewrite
+  v
+Application Load Balancer
+  |
+  v
+FastAPI on AWS ECS/Fargate
+  |
+  +-- Firebase Authentication
+  +-- Firestore
+  +-- Firebase Storage
+  +-- Gemini API
+  +-- Expo Push Notifications
+
+iOS / Android
+  |
+  +-- Expo React Native app
+        |
+        +-- FastAPI API
+        +-- Firebase services
+```
+
+> [!NOTE]
+> 展示終了後のコスト削減のため、現在AWSバックエンドとALBは停止しています。再公開時にはAWS環境の再構築とAPI接続先の更新が必要です。
+
+## 技術スタック
 
 ### Frontend
 
-- Expo
-- React Native
-- React Native Web
+- Expo / React Native / React Native Web
 - Expo Router
 - TypeScript
 - Firebase Authentication
@@ -46,133 +129,56 @@ AI相談、トレーニング記録、実績、通知、フレンド、ランキ
 
 ### Backend
 
-- FastAPI
-- Python
+- FastAPI / Python
 - Firebase Admin SDK
-- Firestore
+- Firestore / Firebase Storage
 - Gemini API
 - Docker
 
 ### Hosting / Infrastructure
 
-- Vercel: Web frontend
-- AWS ECS/Fargate: Backend container
-- Amazon ECR: Docker image registry
-- Application Load Balancer: Backend public entrypoint
-- CloudWatch Logs: Backend logs
-- AWS Secrets Manager: Gemini API key and Firebase service account
+- Vercel
+- AWS ECS / Fargate
+- Application Load Balancer
+- Amazon ECR
+- CloudWatch Logs
+- AWS Secrets Manager
 
-## システム構成
+## 開発体制
 
-```text
-User
-  |
-  | Web / iOS / Android
-  v
-Expo React Native app
-  |
-  | HTTPS on Vercel: /api/*
-  | Native/local: EXPO_PUBLIC_API_BASE_URL
-  v
-FastAPI backend on ECS Fargate
-  |
-  +-- Firebase Authentication
-  +-- Firestore
-  +-- Firebase Storage
-  +-- Gemini API
-  +-- Expo Push Notifications
-```
+- 開発期間: 2026/03/17 - 2026/03/31
+- チーム人数: 5名
+- 開発形態: チーム開発
 
-### Backend
+- 開発期間: 2026/05/15 - 2026/05/30
+- チーム人数: 3名
+- 開発形態: 継続開発
 
-```powershell
-cd backend
-python -m venv venv
+短期間で各機能を個別に作るだけでなく、認証、保存、画面遷移をつなぎ、ひとつのサービスとして操作できる状態にすることを重視しました。
 
-# Windowsの場合
-.\venv\Scripts\Activate.ps1
-# Mac/Linuxの場合
-source venv/bin/activate
+## 今後の展望
 
-pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --reload
-```
+### 短期
 
-必要なもの:
+- ターゲットユーザーの明確化とユーザーテスト
+- AI相談とランキングへのレート制限・監視追加
+- 記録メモ、目標設定、体重推移グラフの改善
 
-- `backend/.env`
-- `backend/serviceAccountKey.json`
-- `GEMINI_API_KEY`
+### 中期
 
-### Frontend
+- 食事管理とトレーニングデータを組み合わせたAI提案
+- HealthKit・スマートウォッチ連携
+- フレンド間チャレンジやグループ機能
 
-```powershell
-cd C:\dev\muscle-hackathon\frontend
-npm install
-npx expo start
-```
+### 長期
 
-## 環境変数
-
-Frontendは `frontend/.env.example`、Backendは `backend/.env.example` を参照してください。
-FirebaseやGeminiのキーはGitに含めません。
-
-主なFrontend環境変数:
-
-- `EXPO_PUBLIC_API_BASE_URL`
-- `EXPO_PUBLIC_FIREBASE_API_KEY`
-- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
-- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `EXPO_PUBLIC_FIREBASE_APP_ID`
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
-- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
-- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
-- `EXPO_PUBLIC_EAS_PROJECT_ID`
-
-主なBackend環境変数:
-
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL`
-- `GEMINI_FALLBACK_MODEL`
-- `ADMIN_API_TOKEN`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
-
-## よく使う確認コマンド
-
-```powershell
-cd C:\dev\muscle-hackathon
-git status --short --branch
-```
-
-```powershell
-cd C:\dev\muscle-hackathon\frontend
-npx.cmd eslint app\index.tsx --no-cache
-npx.cmd expo export --platform web
-```
-
-```powershell
-cd C:\dev\muscle-hackathon\backend
-.\venv\Scripts\python.exe -m compileall app
-```
-
-## 注意点
-
-- GitHubにpushするとVercelのWeb版は自動デプロイされます。
-- Backend変更はGitHub pushだけではAWSに反映されません。Docker build/pushとECS redeployが必要です。
-- WebではHealthKit、ネイティブ通知、SecureStore系、一部画像URI、自動音声再生に制限があります。
-
-## 今後の課題
+- AIによるフォーム解析と安全なトレーニング支援
+- ジム、学校、企業の健康支援向け機能
+- AWS上での配信、監視、スケーリングの一元化
 - マネタイズの方法の模索
-- ターゲット層の明確化
-- 同業他社のアプリとの差別化
-- 食事管理機能の追加
-- 目標設定システムの導入
-- 体重を記録し、その推移をグラフ化するシステムの導入
-- 記録のメモの改善
-- スマートウォッチとの連携
-- HealthKitと連携した本格的なヘルスケアデータ取得
-- 歩数測定機能の追加
-- チャット機能の追加
+
+## ローカルでの実行
+
+FirebaseとGeminiの認証情報、環境変数の設定が必要です。  
+詳しい起動手順と確認方法は [SETUP_MANUAL.md](SETUP_MANUAL.md) を参照してください。
+
